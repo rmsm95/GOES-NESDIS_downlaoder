@@ -422,11 +422,22 @@ async function findNearestHour(prefixes, baseDateISO, baseHour, maxOffsetHours =
 // QUERY BUTTON STATE / UI INIT
 // ==========================
 function updateQueryButtonState() {
-  if (selectedSatellites.size === 0) {
+  // If there are satellites available in the select, allow queries
+  // even if none are currently selected (user can query all products).
+  const satsAvailable = satSelect && satSelect.options && satSelect.options.length > 0;
+
+  if (!satsAvailable) {
     queryBtn.disabled = true;
-    queryStatus.textContent = "Please select at least one satellite.";
+    queryStatus.textContent = "No satellites available to query.";
+    return;
+  }
+
+  // Enable the button when there are satellites in the UI; leave
+  // a gentle prompt if the user hasn't selected any (they can query all).
+  queryBtn.disabled = false;
+  if (selectedSatellites.size === 0) {
+    queryStatus.textContent = "No satellites selected — query will search all satellites.";
   } else {
-    queryBtn.disabled = false;
     queryStatus.textContent = "";
   }
 }
@@ -697,12 +708,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setDefaultDateTimeInputs();
     loadSatellites();
-    updateQueryButtonState();
+      // Ensure our selected* sets reflect the selects' current values
+      if (satSelect) selectedSatellites = new Set(getSelectValues(satSelect));
+      if (sensorSelect) selectedSensors = new Set(getSelectValues(sensorSelect));
+      if (productSelect) selectedProducts = new Set(getSelectValues(productSelect));
+      if (bandSelect) selectedBands = new Set(getSelectValues(bandSelect));
 
-    // populate dependent selects on load (show available sensors/products)
-    populateSensorsSelect();
-    populateProductsSelect();
-    populateBandsSelect();
+      // populate dependent selects on load (show available sensors/products)
+      populateSensorsSelect();
+      populateProductsSelect();
+      populateBandsSelect();
+
+      updateQueryButtonState();
   } catch (err) {
     console.error('Init error in script.js:', err);
   }
