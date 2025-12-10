@@ -120,6 +120,34 @@ const CONFIG = {
         'SUVI-L1b-He303': { name: 'SUVI L1b He303', bands: null }
       }
     },
+        'GOES-19': {
+          bucket: 'noaa-goes19',
+          products: {
+            'ABI-Flood-Day-Shapefiles': { name: 'ABI Flood Day Shapefiles', bands: null },
+            'ABI-Flood-Day-TIF': { name: 'ABI Flood Day TIF', bands: null },
+            'ABI-Flood-Day': { name: 'ABI Flood Day', bands: null },
+            'ABI-Flood-Hourly-Shapefiles': { name: 'ABI Flood Hourly Shapefiles', bands: null },
+            'ABI-Flood-Hourly-TIF': { name: 'ABI Flood Hourly TIF', bands: null },
+            'ABI-Flood-Hourly': { name: 'ABI Flood Hourly', bands: null },
+            'ABI-L1b-RadC': { name: 'ABI L1b Radiance (CONUS)', bands: ABI_BANDS },
+            'ABI-L1b-RadF': { name: 'ABI L1b Radiance (Full Disk)', bands: ABI_BANDS },
+            'ABI-L1b-RadM': { name: 'ABI L1b Radiance (Mesoscale)', bands: ABI_BANDS },
+            'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null },
+            'EXIS-L1b-SFEU': { name: 'EXIS L1b SFEU', bands: null },
+            'EXIS-L1b-SFXR': { name: 'EXIS L1b SFXR', bands: null },
+            'MAG-L1b-GEOF': { name: 'MAG L1b GEOF', bands: null },
+            'SEIS-L1b-EHIS': { name: 'SEIS L1b EHIS', bands: null },
+            'SEIS-L1b-MPSH': { name: 'SEIS L1b MPSH', bands: null },
+            'SEIS-L1b-MPSL': { name: 'SEIS L1b MPSL', bands: null },
+            'SEIS-L1b-SGPS': { name: 'SEIS L1b SGPS', bands: null },
+            'SUVI-L1b-Fe093': { name: 'SUVI L1b Fe093', bands: null },
+            'SUVI-L1b-Fe131': { name: 'SUVI L1b Fe131', bands: null },
+            'SUVI-L1b-Fe171': { name: 'SUVI L1b Fe171', bands: null },
+            'SUVI-L1b-Fe195': { name: 'SUVI L1b Fe195', bands: null },
+            'SUVI-L1b-Fe284': { name: 'SUVI L1b Fe284', bands: null },
+            'SUVI-L1b-He303': { name: 'SUVI L1b He303', bands: null }
+          }
+        },
     'GOES-17': {
       bucket: 'noaa-goes17',
       products: {

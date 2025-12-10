@@ -332,26 +332,39 @@ document.querySelectorAll("input[name='time-mode']").forEach(r => {
 async function listS3(bucket, prefix) {
   const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${prefix}`;
 
-  const resp = await fetch(url);
-  if (!resp.ok) return [];
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      console.warn(`listS3: non-OK response for ${url}: ${resp.status}`);
+      return [];
+    }
 
-  const text = await resp.text();
+    const text = await resp.text();
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, "application/xml");
+    const contents = xml.getElementsByTagName("Contents");
 
-  const parser = new DOMParser();
-  const xml = parser.parseFromString(text, "application/xml");
-  const contents = xml.getElementsByTagName("Contents");
+    const files = [];
 
-  const files = [];
+    for (let item of contents) {
+      const keyNode = item.getElementsByTagName("Key")[0];
+      const sizeNode = item.getElementsByTagName("Size")[0];
+      const lmNode = item.getElementsByTagName("LastModified")[0];
 
-  for (let item of contents) {
-    files.push({
-      key: item.getElementsByTagName("Key")[0].textContent,
-      size: parseInt(item.getElementsByTagName("Size")[0].textContent),
-      lastModified: item.getElementsByTagName("LastModified")[0].textContent
-    });
+      if (!keyNode) continue;
+
+      files.push({
+        key: keyNode.textContent,
+        size: sizeNode ? parseInt(sizeNode.textContent) : 0,
+        lastModified: lmNode ? lmNode.textContent : ''
+      });
+    }
+
+    return files;
+  } catch (err) {
+    console.error(`listS3: failed to fetch ${url}. This may be a CORS or network error.`, err);
+    return [];
   }
-
-  return files;
 }
 
 // ==========================
