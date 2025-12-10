@@ -382,6 +382,10 @@ function buildPrefixes() {
       // include all products that match selected sensors (if any)
       prodList = Object.keys(satProducts).filter(prodKey => {
         const sensor = prodKey.split("-")[0];
+        // If user selected specific bands, ONLY include ABI products (bands only apply to ABI)
+        if (selectedBands.size > 0) {
+          return prodKey.startsWith("ABI");
+        }
         return selectedSensors.size === 0 || selectedSensors.has(sensor);
       });
     }
