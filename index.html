@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GOES & JPSS AWS Data Downloader</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>GOES & JPSS AWS Data Downloader</h1>
+    <p>
+      Browse and download public GOES (16–19) and JPSS (NOAA-20, NOAA-21) data
+      directly from AWS S3 buckets.
+    </p>
+  </header>
+
+  <main>
+    <!-- SATELLITES / SENSORS / PRODUCTS / BANDS -->
+    <section class="panel">
+      <h2>1. Select satellites, sensors, products & bands</h2>
+
+      <div class="grid-2">
+        <div>
+          <h3>Satellites</h3>
+          <div id="satellite-options" class="chip-group"></div>
+          <small>You can select more than one satellite.</small>
+        </div>
+
+        <div>
+          <h3>Sensors / Instruments</h3>
+          <div id="sensor-options" class="chip-group"></div>
+          <small>Options depend on the satellites selected (ABI, GLM, VIIRS, etc.).</small>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <h3>Products</h3>
+          <div id="product-options" class="checklist"></div>
+          <small>Choose one or more products. This list depends on the selected sensors.</small>
+        </div>
+
+        <div>
+          <h3>Bands (for ABI imagery)</h3>
+          <div class="band-controls">
+            <label>
+              <input type="checkbox" id="bands-select-all" />
+              Select all bands (C01–C16)
+            </label>
+          </div>
+          <div id="band-options" class="chip-group compact"></div>
+          <small>
+            Band selection is applied to ABI products (GOES). VIIRS Level-2 products
+            typically do not have single “band” files in the same way.
+          </small>
+        </div>
+      </div>
+
+      <div>
+        <h3>Domain (for GOES ABI)</h3>
+        <div id="domain-options" class="radio-group">
+          <label>
+            <input type="radio" name="domain" value="FULL_DISK" checked />
+            Full Disk
+          </label>
+          <label>
+            <input type="radio" name="domain" value="CONUS" />
+            CONUS
+          </label>
+          <label>
+            <input type="radio" name="domain" value="MESOSCALE" />
+            Mesoscale
+          </label>
+        </div>
+        <small>
+          Domain applies to ABI products (e.g. CMIPF / CMIPC / CMIPM). For JPSS/VIIRS this
+          is ignored.
+        </small>
+      </div>
+    </section>
+
+    <!-- TIME SELECTION -->
+    <section class="panel">
+      <h2>2. Select time range</h2>
+
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="time-mode" value="single" checked />
+          Single date & hour
+        </label>
+        <label>
+          <input type="radio" name="time-mode" value="range" />
+          Date & time interval
+        </label>
+      </div>
+
+      <div id="single-time-block" class="time-block">
+        <h3>Single date & hour (UTC)</h3>
+        <label>
+          Date:
+          <input type="date" id="single-date" />
+        </label>
+        <label>
+          Hour (0–23):
+          <input type="number" id="single-hour" min="0" max="23" value="0" />
+        </label>
+      </div>
+
+      <div id="range-time-block" class="time-block hidden">
+        <h3>Date & time interval (UTC)</h3>
+        <div class="grid-2">
+          <div>
+            <h4>Start</h4>
+            <label>
+              Date:
+              <input type="date" id="range-start-date" />
+            </label>
+            <label>
+              Hour (0–23):
+              <input type="number" id="range-start-hour" min="0" max="23" value="0" />
+            </label>
+          </div>
+          <div>
+            <h4>End</h4>
+            <label>
+              Date:
+              <input type="date" id="range-end-date" />
+            </label>
+            <label>
+              Hour (0–23):
+              <input type="number" id="range-end-hour" min="0" max="23" value="0" />
+            </label>
+          </div>
+        </div>
+        <small>
+          The tool queries each hour between start and end (inclusive). Be careful with large ranges –
+          it can be many S3 calls.
+        </small>
+      </div>
+
+      <button id="query-button" class="primary">3. Query S3</button>
+      <div id="query-status" class="status"></div>
+    </section>
+
+    <!-- RESULTS -->
+    <section class="panel">
+      <h2>4. Results & downloads</h2>
+      <div class="results-actions">
+        <label>
+          <input type="checkbox" id="select-all-files" />
+          Select all files
+        </label>
+        <button id="download-selected" class="secondary">Download selected</button>
+        <button id="copy-urls" class="secondary">Copy URLs</button>
+      </div>
+
+      <div id="results-info" class="status"></div>
+
+      <div class="table-container">
+        <table id="results-table">
+          <thead>
+            <tr>
+              <th>Select</th>
+              <th>Satellite</th>
+              <th>Bucket</th>
+              <th>Sensor</th>
+              <th>Product</th>
+              <th>Band</th>
+              <th>Key</th>
+              <th>Size (MB)</th>
+              <th>Last modified</th>
+            </tr>
+          </thead>
+          <tbody id="results-body">
+            <!-- rows injected by script.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>
+      This tool accesses
