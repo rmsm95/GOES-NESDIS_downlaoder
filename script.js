@@ -525,16 +525,17 @@ queryBtn.addEventListener("click", async () => {
 
         files.forEach(f => {
                                 // If user selected specific bands, only include files matching that band
-                                if (selectedBands.size > 0 && p.band) {
+                                if (selectedBands.size > 0) {
                                   const bandMatch = f.key.match(/-M\dC(\d{2})/);
                                   const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
-                                  if (bandFromFile !== p.band) return; // Skip files that don't match selected band
+                                  // If we couldn't determine band from filename, skip (conservative)
+                                  if (!bandFromFile || !selectedBands.has(bandFromFile)) return;
                                 }
                     // If user selected specific bands, only include files matching that band
-                    if (selectedBands.size > 0 && p.band) {
+                    if (selectedBands.size > 0) {
                       const bandMatch = f.key.match(/-M\dC(\d{2})/);
                       const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
-                      if (bandFromFile !== p.band) return; // Skip files that don't match selected band
+                      if (!bandFromFile || !selectedBands.has(bandFromFile)) return;
                     }
           FILE_RESULTS.push({
             satellite: p.sat,
