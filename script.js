@@ -46,10 +46,12 @@ let FILE_RESULTS = []; // store results from AWS queries
 // ==========================
 
 function clearContainer(el) {
+  if (!el) return;
   el.innerHTML = "";
 }
 
 function createChip(id, label, group, callback) {
+  if (!group) return null;
   const div = document.createElement("div");
   div.className = "chip";
   div.dataset.id = id;
@@ -61,9 +63,11 @@ function createChip(id, label, group, callback) {
   });
 
   group.appendChild(div);
+  return div;
 }
 
 function createCheckbox(id, label, group, callback) {
+  if (!group) return null;
   const wrapper = document.createElement("div");
   wrapper.className = "check-item";
 
@@ -82,6 +86,7 @@ function createCheckbox(id, label, group, callback) {
   wrapper.appendChild(lbl);
 
   group.appendChild(wrapper);
+  return wrapper;
 }
 
 // ==========================
