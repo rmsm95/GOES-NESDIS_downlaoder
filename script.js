@@ -604,6 +604,10 @@ function renderResults() {
     const tr = document.createElement("tr");
 
     const fileUrl = `https://${f.bucket}.s3.amazonaws.com/${encodeURI(f.key)}`;
+    
+    // Extract band from filename (e.g., "OR_ABI-L1b-RadF-M6C02_..." → "C02")
+    const bandMatch = f.key.match(/-M\dC(\d{2})/);
+    const bandFromFile = bandMatch ? `C${bandMatch[1]}` : f.band || "";
 
     tr.innerHTML = `
       <td><input type="checkbox" class="file-select" data-idx="${i}"></td>
@@ -611,7 +615,7 @@ function renderResults() {
       <td>${f.bucket}</td>
       <td>${f.product.split("-")[0]}</td>
       <td>${f.product}</td>
-      <td>${f.band}</td>
+      <td>${bandFromFile}</td>
       <td><a href="${fileUrl}" target="_blank" rel="noreferrer">${f.key}</a></td>
       <td>${Number(f.size).toLocaleString()} MB</td>
       <td>${f.lastModified}</td>
