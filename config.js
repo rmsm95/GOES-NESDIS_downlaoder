@@ -182,3 +182,5 @@ const CONFIG = {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = CONFIG;
 }
+// expose ABI_BANDS on CONFIG for compatibility
+CONFIG.ABI_BANDS = ABI_BANDS;

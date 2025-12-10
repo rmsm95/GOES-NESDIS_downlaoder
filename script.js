@@ -137,6 +137,9 @@ function populateProductsSelect() {
 function populateBandsSelect() {
   if (!bandSelect) return;
   bandSelect.innerHTML = "";
+  console.log('populateBandsSelect: selectedSatellites=', [...selectedSatellites]);
+  console.log('populateBandsSelect: selectedSensors=', [...selectedSensors]);
+  console.log('populateBandsSelect: selectedProducts=', [...selectedProducts]);
   // Build a list of candidate products to inspect for bands.
   // If the user selected explicit products, use those; otherwise derive
   // products from selected satellites/sensors (like populateProductsSelect).
@@ -160,6 +163,8 @@ function populateBandsSelect() {
   const bandsSet = new Set();
 
   prodCandidates.forEach(prodKey => {
+    // debug
+    // console.log('checking prodKey:', prodKey);
     // find product definition across satellites
     for (const sName of Object.keys(CONFIG.satellites)) {
       const satProd = CONFIG.satellites[sName].products && CONFIG.satellites[sName].products[prodKey];
@@ -172,6 +177,9 @@ function populateBandsSelect() {
       }
     }
   });
+
+  console.log('populateBandsSelect: prodCandidates count=', prodCandidates.length);
+  console.log('populateBandsSelect: bandsSet=', Array.from(bandsSet).sort());
 
   if (bandsSet.size === 0) {
     // nothing to show
