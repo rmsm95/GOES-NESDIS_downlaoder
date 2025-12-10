@@ -665,10 +665,32 @@ copyUrlsBtn.addEventListener("click", async () => {
 // ==========================
 // INIT
 // ==========================
-setDefaultDateTimeInputs();
-loadSatellites();
-updateQueryButtonState();
-// populate dependent selects on load (show available sensors/products)
-populateSensorsSelect();
-populateProductsSelect();
-populateBandsSelect();
+// Wrap initialization in DOMContentLoaded to ensure elements exist and
+// to make debugging easier. Print diagnostic logs so we can see what
+// the page loaded and which DOM elements are available.
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    console.log('GOES Downloader init:', {
+      CONFIG_present: typeof CONFIG !== 'undefined',
+      satellites: CONFIG ? Object.keys(CONFIG.satellites || {}) : null,
+      elements: {
+        satSelect: !!satSelect,
+        sensorSelect: !!sensorSelect,
+        productSelect: !!productSelect,
+        bandSelect: !!bandSelect,
+        satContainer: !!satContainer
+      }
+    });
+
+    setDefaultDateTimeInputs();
+    loadSatellites();
+    updateQueryButtonState();
+
+    // populate dependent selects on load (show available sensors/products)
+    populateSensorsSelect();
+    populateProductsSelect();
+    populateBandsSelect();
+  } catch (err) {
+    console.error('Init error in script.js:', err);
+  }
+});
