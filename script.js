@@ -373,7 +373,6 @@ async function findNearestHour(prefixes, baseDateISO, baseHour, maxOffsetHours =
 // ==========================
 function buildPrefixes() {
   const prefixes = [];
-  console.log('[buildPrefixes]', 'selectedSatellites:', [...selectedSatellites], 'selectedBands:', [...selectedBands]);
 
   [...selectedSatellites].forEach(sat => {
     const satProducts = CONFIG.satellites[sat].products || {};
@@ -399,7 +398,6 @@ function buildPrefixes() {
       const bands = isABI ? (selectedBands.size ? [...selectedBands] : [...(CONFIG.ABI_BANDS || [])]) : [null];
 
       bands.forEach(band => prefixes.push({ sat, bucket, prod, band }));
-      console.log('[buildPrefixes]', 'Generated', prefixes.length, 'prefix entries with bands:', prefixes.map(p => p.band).filter((v, i, a) => a.indexOf(v) === i).sort());
     });
   });
 
@@ -524,19 +522,6 @@ queryBtn.addEventListener("click", async () => {
         const files = await listS3(p.bucket, prefix);
 
         files.forEach(f => {
-                                // If user selected specific bands, only include files matching that band
-                                if (selectedBands.size > 0) {
-                                  const bandMatch = f.key.match(/-M\dC(\d{2})/);
-                                  const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
-                                  // If we couldn't determine band from filename, skip (conservative)
-                                  if (!bandFromFile || !selectedBands.has(bandFromFile)) return;
-                                }
-                    // If user selected specific bands, only include files matching that band
-                    if (selectedBands.size > 0) {
-                      const bandMatch = f.key.match(/-M\dC(\d{2})/);
-                      const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
-                      if (!bandFromFile || !selectedBands.has(bandFromFile)) return;
-                    }
           FILE_RESULTS.push({
             satellite: p.sat,
             bucket: p.bucket,
