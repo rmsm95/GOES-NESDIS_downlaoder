@@ -1,7 +1,7 @@
 // ==========================
 // IMPORT CONFIG
 // ==========================
-import CONFIG from "./config.js";
+import CONFIG from "./js/config.js";
 
 // ==========================
 // DOM ELEMENTS
