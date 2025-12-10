@@ -502,25 +502,20 @@ queryBtn.addEventListener("click", async () => {
 
   try {
     if (mode === "single") {
-      // For single mode, try to find nearest hour (within +/- 6 hours) that has any files.
+      // For single mode, query ONLY the exact hour specified (no nearest-hour fallback).
       const [date, hourVal] = hours[0].split(" ");
+      const dt = new Date(`${date}T${String(hourVal).padStart(2, "0")}:00Z`);
+      const y = dt.getUTCFullYear();
+      const startOfYear = new Date(Date.UTC(y, 0, 1));
+      const doy = String(Math.floor((Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()) - startOfYear) / 86400000) + 1).padStart(3, "0");
+      const h = String(dt.getUTCHours()).padStart(2, "0");
 
-      queryStatus.textContent = "Searching nearest available hour (±6h)…";
-      const nearest = await findNearestHour(prefixes, date, hourVal, 6);
-      if (nearest === null) {
-        queryStatus.textContent = "No files found within +/-6 hours.";
-        renderResults();
-        isQuerying = false;
-        updateQueryButtonState();
-        return;
-      }
+      queryStatus.textContent = `Querying ${date} ${h}:00 UTC…`;
 
-      // use the found hour and its results
-      const { testDT, h, foundMap } = nearest;
-      // for each prefix, try to get the files (we already have some in foundMap)
       for (let p of prefixes) {
-        const keyMeta = `${p.prod}::${p.band || ''}::${p.sat}`;
-        const files = foundMap.get(keyMeta) || [];
+        const prefix = `${p.prod}/${y}/${doy}/${h}/`;
+
+        const files = await listS3(p.bucket, prefix);
 
         files.forEach(f => {
           FILE_RESULTS.push({
