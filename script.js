@@ -520,8 +520,14 @@ queryBtn.addEventListener("click", async () => {
         const prefix = `${p.prod}/${y}/${doy}/${h}/`;
 
         const files = await listS3(p.bucket, prefix);
-
         files.forEach(f => {
+          // If user selected specific bands, only include files matching those bands
+          if (selectedBands.size > 0) {
+            const bandMatch = f.key.match(/-M\dC(\d{2})/);
+            const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
+            if (!bandFromFile || !selectedBands.has(bandFromFile)) return; // skip non-matching band
+          }
+
           FILE_RESULTS.push({
             satellite: p.sat,
             bucket: p.bucket,
@@ -557,6 +563,13 @@ queryBtn.addEventListener("click", async () => {
           const files = await listS3(p.bucket, prefix);
 
           files.forEach(f => {
+            // If user selected specific bands, only include files matching those bands
+            if (selectedBands.size > 0) {
+              const bandMatch = f.key.match(/-M\dC(\d{2})/);
+              const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
+              if (!bandFromFile || !selectedBands.has(bandFromFile)) return; // skip non-matching band
+            }
+
             FILE_RESULTS.push({
               satellite: p.sat,
               bucket: p.bucket,
