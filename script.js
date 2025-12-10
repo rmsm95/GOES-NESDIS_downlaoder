@@ -71,6 +71,9 @@ function populateSatellitesSelect() {
     populateBandsSelect();
     updateQueryButtonState();
   };
+  // Auto-select all satellites on page load
+  Array.from(satSelect.options).forEach(opt => opt.selected = true);
+  selectedSatellites = new Set(getSelectValues(satSelect));
 }
 
 function populateSensorsSelect() {

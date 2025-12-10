@@ -3,11 +3,9 @@
  * Includes ALL available products from NOAA S3 buckets
  */
 
-// Standard ABI band codes used for many ABI L1b/L2 products
 const ABI_BANDS = ['C01','C02','C03','C04','C05','C06','C07','C08','C09','C10','C11','C12','C13','C14','C15','C16'];
 
 const CONFIG = {
-  // Satellites and their products
   satellites: {
     'GOES-16': {
       bucket: 'noaa-goes16',
@@ -15,7 +13,29 @@ const CONFIG = {
         'ABI-L1b-RadC': { name: 'ABI L1b Radiance (CONUS)', bands: ABI_BANDS },
         'ABI-L1b-RadF': { name: 'ABI L1b Radiance (Full Disk)', bands: ABI_BANDS },
         'ABI-L1b-RadM': { name: 'ABI L1b Radiance (Mesoscale)', bands: ABI_BANDS },
-        'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null }
+        'ABI-L2-CMIPC': { name: 'ABI L2 CMIP (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-CMIPF': { name: 'ABI L2 CMIP (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-CMIPM': { name: 'ABI L2 CMIP (Mesoscale)', bands: ABI_BANDS },
+        'ABI-L2-LSTC': { name: 'ABI L2 LST (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-LSTF': { name: 'ABI L2 LST (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-LSTM': { name: 'ABI L2 LST (Mesoscale)', bands: ABI_BANDS },
+        'ABI-L2-TPWC': { name: 'ABI L2 TPW (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-TPWF': { name: 'ABI L2 TPW (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-TPWM': { name: 'ABI L2 TPW (Mesoscale)', bands: ABI_BANDS },
+        'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null },
+        'EXIS-L1b-SFEU': { name: 'EXIS L1b SFEU', bands: null },
+        'EXIS-L1b-SFXR': { name: 'EXIS L1b SFXR', bands: null },
+        'MAG-L1b-GEOF': { name: 'MAG L1b GEOF', bands: null },
+        'SEIS-L1b-EHIS': { name: 'SEIS L1b EHIS', bands: null },
+        'SEIS-L1b-MPSH': { name: 'SEIS L1b MPSH', bands: null },
+        'SEIS-L1b-MPSL': { name: 'SEIS L1b MPSL', bands: null },
+        'SEIS-L1b-SGPS': { name: 'SEIS L1b SGPS', bands: null },
+        'SUVI-L1b-Fe093': { name: 'SUVI L1b Fe093', bands: null },
+        'SUVI-L1b-Fe131': { name: 'SUVI L1b Fe131', bands: null },
+        'SUVI-L1b-Fe171': { name: 'SUVI L1b Fe171', bands: null },
+        'SUVI-L1b-Fe195': { name: 'SUVI L1b Fe195', bands: null },
+        'SUVI-L1b-Fe284': { name: 'SUVI L1b Fe284', bands: null },
+        'SUVI-L1b-He303': { name: 'SUVI L1b He303', bands: null }
       }
     },
     'GOES-17': {
@@ -24,7 +44,29 @@ const CONFIG = {
         'ABI-L1b-RadC': { name: 'ABI L1b Radiance (CONUS)', bands: ABI_BANDS },
         'ABI-L1b-RadF': { name: 'ABI L1b Radiance (Full Disk)', bands: ABI_BANDS },
         'ABI-L1b-RadM': { name: 'ABI L1b Radiance (Mesoscale)', bands: ABI_BANDS },
-        'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null }
+        'ABI-L2-CMIPC': { name: 'ABI L2 CMIP (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-CMIPF': { name: 'ABI L2 CMIP (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-CMIPM': { name: 'ABI L2 CMIP (Mesoscale)', bands: ABI_BANDS },
+        'ABI-L2-LSTC': { name: 'ABI L2 LST (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-LSTF': { name: 'ABI L2 LST (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-LSTM': { name: 'ABI L2 LST (Mesoscale)', bands: ABI_BANDS },
+        'ABI-L2-TPWC': { name: 'ABI L2 TPW (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-TPWF': { name: 'ABI L2 TPW (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-TPWM': { name: 'ABI L2 TPW (Mesoscale)', bands: ABI_BANDS },
+        'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null },
+        'EXIS-L1b-SFEU': { name: 'EXIS L1b SFEU', bands: null },
+        'EXIS-L1b-SFXR': { name: 'EXIS L1b SFXR', bands: null },
+        'MAG-L1b-GEOF': { name: 'MAG L1b GEOF', bands: null },
+        'SEIS-L1b-EHIS': { name: 'SEIS L1b EHIS', bands: null },
+        'SEIS-L1b-MPSH': { name: 'SEIS L1b MPSH', bands: null },
+        'SEIS-L1b-MPSL': { name: 'SEIS L1b MPSL', bands: null },
+        'SEIS-L1b-SGPS': { name: 'SEIS L1b SGPS', bands: null },
+        'SUVI-L1b-Fe093': { name: 'SUVI L1b Fe093', bands: null },
+        'SUVI-L1b-Fe131': { name: 'SUVI L1b Fe131', bands: null },
+        'SUVI-L1b-Fe171': { name: 'SUVI L1b Fe171', bands: null },
+        'SUVI-L1b-Fe195': { name: 'SUVI L1b Fe195', bands: null },
+        'SUVI-L1b-Fe284': { name: 'SUVI L1b Fe284', bands: null },
+        'SUVI-L1b-He303': { name: 'SUVI L1b He303', bands: null }
       }
     },
     'GOES-18': {
@@ -33,7 +75,29 @@ const CONFIG = {
         'ABI-L1b-RadC': { name: 'ABI L1b Radiance (CONUS)', bands: ABI_BANDS },
         'ABI-L1b-RadF': { name: 'ABI L1b Radiance (Full Disk)', bands: ABI_BANDS },
         'ABI-L1b-RadM': { name: 'ABI L1b Radiance (Mesoscale)', bands: ABI_BANDS },
-        'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null }
+        'ABI-L2-CMIPC': { name: 'ABI L2 CMIP (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-CMIPF': { name: 'ABI L2 CMIP (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-CMIPM': { name: 'ABI L2 CMIP (Mesoscale)', bands: ABI_BANDS },
+        'ABI-L2-LSTC': { name: 'ABI L2 LST (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-LSTF': { name: 'ABI L2 LST (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-LSTM': { name: 'ABI L2 LST (Mesoscale)', bands: ABI_BANDS },
+        'ABI-L2-TPWC': { name: 'ABI L2 TPW (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-TPWF': { name: 'ABI L2 TPW (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-TPWM': { name: 'ABI L2 TPW (Mesoscale)', bands: ABI_BANDS },
+        'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null },
+        'EXIS-L1b-SFEU': { name: 'EXIS L1b SFEU', bands: null },
+        'EXIS-L1b-SFXR': { name: 'EXIS L1b SFXR', bands: null },
+        'MAG-L1b-GEOF': { name: 'MAG L1b GEOF', bands: null },
+        'SEIS-L1b-EHIS': { name: 'SEIS L1b EHIS', bands: null },
+        'SEIS-L1b-MPSH': { name: 'SEIS L1b MPSH', bands: null },
+        'SEIS-L1b-MPSL': { name: 'SEIS L1b MPSL', bands: null },
+        'SEIS-L1b-SGPS': { name: 'SEIS L1b SGPS', bands: null },
+        'SUVI-L1b-Fe093': { name: 'SUVI L1b Fe093', bands: null },
+        'SUVI-L1b-Fe131': { name: 'SUVI L1b Fe131', bands: null },
+        'SUVI-L1b-Fe171': { name: 'SUVI L1b Fe171', bands: null },
+        'SUVI-L1b-Fe195': { name: 'SUVI L1b Fe195', bands: null },
+        'SUVI-L1b-Fe284': { name: 'SUVI L1b Fe284', bands: null },
+        'SUVI-L1b-He303': { name: 'SUVI L1b He303', bands: null }
       }
     },
     'GOES-19': {
@@ -42,25 +106,54 @@ const CONFIG = {
         'ABI-L1b-RadC': { name: 'ABI L1b Radiance (CONUS)', bands: ABI_BANDS },
         'ABI-L1b-RadF': { name: 'ABI L1b Radiance (Full Disk)', bands: ABI_BANDS },
         'ABI-L1b-RadM': { name: 'ABI L1b Radiance (Mesoscale)', bands: ABI_BANDS },
-        'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null }
+        'ABI-L2-CMIPC': { name: 'ABI L2 CMIP (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-CMIPF': { name: 'ABI L2 CMIP (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-CMIPM': { name: 'ABI L2 CMIP (Mesoscale)', bands: ABI_BANDS },
+        'ABI-L2-LSTC': { name: 'ABI L2 LST (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-LSTF': { name: 'ABI L2 LST (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-LSTM': { name: 'ABI L2 LST (Mesoscale)', bands: ABI_BANDS },
+        'ABI-L2-TPWC': { name: 'ABI L2 TPW (CONUS)', bands: ABI_BANDS },
+        'ABI-L2-TPWF': { name: 'ABI L2 TPW (Full Disk)', bands: ABI_BANDS },
+        'ABI-L2-TPWM': { name: 'ABI L2 TPW (Mesoscale)', bands: ABI_BANDS },
+        'GLM-L2-LCFA': { name: 'GLM L2 LCFA', bands: null },
+        'EXIS-L1b-SFEU': { name: 'EXIS L1b SFEU', bands: null },
+        'EXIS-L1b-SFXR': { name: 'EXIS L1b SFXR', bands: null },
+        'MAG-L1b-GEOF': { name: 'MAG L1b GEOF', bands: null },
+        'SEIS-L1b-EHIS': { name: 'SEIS L1b EHIS', bands: null },
+        'SEIS-L1b-MPSH': { name: 'SEIS L1b MPSH', bands: null },
+        'SEIS-L1b-MPSL': { name: 'SEIS L1b MPSL', bands: null },
+        'SEIS-L1b-SGPS': { name: 'SEIS L1b SGPS', bands: null },
+        'SUVI-L1b-Fe093': { name: 'SUVI L1b Fe093', bands: null },
+        'SUVI-L1b-Fe131': { name: 'SUVI L1b Fe131', bands: null },
+        'SUVI-L1b-Fe171': { name: 'SUVI L1b Fe171', bands: null },
+        'SUVI-L1b-Fe195': { name: 'SUVI L1b Fe195', bands: null },
+        'SUVI-L1b-Fe284': { name: 'SUVI L1b Fe284', bands: null },
+        'SUVI-L1b-He303': { name: 'SUVI L1b He303', bands: null }
       }
     },
     'Suomi NPP': {
       bucket: 'noaa-snpp',
       products: {
-        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] }
+        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] },
+        'CrIS-L1b-QL': { name: 'CrIS L1b Quality', bands: null },
+        'OMPS-L2-SO2': { name: 'OMPS L2 SO2', bands: null },
+        'ATMS-L1b': { name: 'ATMS L1b', bands: null }
       }
     },
     'NOAA-20': {
       bucket: 'noaa-j1',
       products: {
-        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] }
+        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] },
+        'CrIS-L1b-QL': { name: 'CrIS L1b Quality', bands: null },
+        'ATMS-L1b': { name: 'ATMS L1b', bands: null }
       }
     },
     'NOAA-21': {
       bucket: 'noaa-j2',
       products: {
-        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] }
+        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] },
+        'CrIS-L1b-QL': { name: 'CrIS L1b Quality', bands: null },
+        'ATMS-L1b': { name: 'ATMS L1b', bands: null }
       }
     }
   },
