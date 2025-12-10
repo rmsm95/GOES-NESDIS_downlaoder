@@ -1,9 +1,7 @@
-// =========================
-// CONFIG (loaded from `config.js` included before this script)
-// =========================
-// `config.js` is included as a normal script in the page, so `CONFIG`
-// is available as a global identifier. Avoid ES module `import` here
-// to keep the page loading simple.
+// ==========================
+// IMPORT CONFIG
+// ==========================
+import CONFIG from "./config.js";
 
 // ==========================
 // DOM ELEMENTS
@@ -13,10 +11,6 @@ const sensorContainer = document.getElementById("sensor-options");
 const productContainer = document.getElementById("product-options");
 const bandContainer = document.getElementById("band-options");
 const bandSelectAll = document.getElementById("bands-select-all");
-const satSelect = document.getElementById("sat-select");
-const sensorSelect = document.getElementById("sensor-select");
-const productSelect = document.getElementById("product-select");
-const bandSelect = document.getElementById("band-select");
 
 const singleBlock = document.getElementById("single-time-block");
 const rangeBlock = document.getElementById("range-time-block");
@@ -40,20 +34,16 @@ let selectedProducts = new Set();
 let selectedBands = new Set();
 
 let FILE_RESULTS = []; // store results from AWS queries
-let isQuerying = false;
-const FETCH_TIMEOUT_MS = 10000; // 10s timeout per S3 request
 
 // ==========================
 // UI HELPERS
 // ==========================
 
 function clearContainer(el) {
-  if (!el) return;
   el.innerHTML = "";
 }
 
 function createChip(id, label, group, callback) {
-  if (!group) return null;
   const div = document.createElement("div");
   div.className = "chip";
   div.dataset.id = id;
@@ -65,11 +55,9 @@ function createChip(id, label, group, callback) {
   });
 
   group.appendChild(div);
-  return div;
 }
 
 function createCheckbox(id, label, group, callback) {
-  if (!group) return null;
   const wrapper = document.createElement("div");
   wrapper.className = "check-item";
 
@@ -88,7 +76,6 @@ function createCheckbox(id, label, group, callback) {
   wrapper.appendChild(lbl);
 
   group.appendChild(wrapper);
-  return wrapper;
 }
 
 // ==========================
@@ -102,113 +89,7 @@ function loadSatellites() {
       isSelected ? selectedSatellites.add(id) : selectedSatellites.delete(id);
       loadSensors();
       loadProducts();
-      updateQueryButtonState();
     });
-  });
-  // populate the new select control
-  populateSatellitesSelect();
-}
-
-function getSelectValues(sel) {
-  if (!sel) return [];
-  return Array.from(sel.selectedOptions).map(o => o.value);
-}
-
-function populateSatellitesSelect() {
-  if (!satSelect) return;
-  satSelect.innerHTML = "";
-  Object.keys(CONFIG.satellites).forEach(name => {
-    const opt = document.createElement("option");
-    opt.value = name;
-    opt.textContent = name;
-    satSelect.appendChild(opt);
-  });
-  satSelect.onchange = () => {
-    // update selectedSatellites set
-    selectedSatellites = new Set(getSelectValues(satSelect));
-    populateSensorsSelect();
-    populateProductsSelect();
-    populateBandsSelect();
-    updateQueryButtonState();
-  };
-}
-
-function populateSensorsSelect() {
-  if (!sensorSelect) return;
-  sensorSelect.innerHTML = "";
-
-  const sensors = new Set();
-  const satsToScan = selectedSatellites.size ? [...selectedSatellites] : Object.keys(CONFIG.satellites);
-  satsToScan.forEach(sat => {
-    const prods = CONFIG.satellites[sat] && CONFIG.satellites[sat].products ? CONFIG.satellites[sat].products : {};
-    Object.keys(prods).forEach(p => sensors.add(p.split("-")[0]));
-  });
-
-  Array.from(sensors).sort().forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s;
-    opt.textContent = s;
-    sensorSelect.appendChild(opt);
-  });
-
-  sensorSelect.onchange = () => {
-    selectedSensors = new Set(getSelectValues(sensorSelect));
-    populateProductsSelect();
-    populateBandsSelect();
-  };
-}
-
-function populateProductsSelect() {
-  if (!productSelect) return;
-  productSelect.innerHTML = "";
-
-  const prodsMap = {};
-  const satsToScan = selectedSatellites.size ? [...selectedSatellites] : Object.keys(CONFIG.satellites);
-  satsToScan.forEach(sat => {
-    const satProducts = (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
-    Object.keys(satProducts).forEach(prod => {
-      const sensor = prod.split("-")[0];
-      if (selectedSensors.size === 0 || selectedSensors.has(sensor)) {
-        prodsMap[prod] = satProducts[prod];
-      }
-    });
-  });
-
-  Object.keys(prodsMap).sort().forEach(prod => {
-    const opt = document.createElement("option");
-    opt.value = prod;
-    opt.textContent = `${prod} — ${prodsMap[prod].name || ''}`;
-    productSelect.appendChild(opt);
-  });
-
-  productSelect.onchange = () => {
-    selectedProducts = new Set(getSelectValues(productSelect));
-    populateBandsSelect();
-  };
-}
-
-function populateBandsSelect() {
-  if (!bandSelect) return;
-  bandSelect.innerHTML = "";
-
-  // determine if any selected product is ABI
-  const abiSelected = getSelectValues(productSelect).some(p => p.startsWith("ABI"));
-
-  if (!abiSelected) {
-    // nothing to populate, leave empty
-    return;
-  }
-
-  const bands = CONFIG.ABI_BANDS || [];
-  bands.forEach(b => {
-    const opt = document.createElement("option");
-    opt.value = b;
-    opt.textContent = b + (CONFIG.bandInfo && CONFIG.bandInfo[b] ? ` — ${CONFIG.bandInfo[b].name}` : "");
-    bandSelect.appendChild(opt);
-  });
-
-  bandSelect.addEventListener("change", () => {
-    selectedBands = new Set(getSelectValues(bandSelect));
   });
 }
 
@@ -292,22 +173,12 @@ bandSelectAll.addEventListener("change", () => {
   selectedBands.clear();
 
   if (bandSelectAll.checked) {
-    // select all in new select if present
-    if (bandSelect) {
-      Array.from(bandSelect.options).forEach(o => { o.selected = true; selectedBands.add(o.value); });
-    } else {
-      allChips.forEach(chip => {
-        chip.classList.add("selected");
-        selectedBands.add(chip.dataset.id);
-      });
-    }
+    allChips.forEach(chip => {
+      chip.classList.add("selected");
+      selectedBands.add(chip.dataset.id);
+    });
   } else {
-    if (bandSelect) {
-      Array.from(bandSelect.options).forEach(o => { o.selected = false; });
-      selectedBands.clear();
-    } else {
-      allChips.forEach(chip => chip.classList.remove("selected"));
-    }
+    allChips.forEach(chip => chip.classList.remove("selected"));
   }
 });
 
@@ -334,158 +205,26 @@ document.querySelectorAll("input[name='time-mode']").forEach(r => {
 async function listS3(bucket, prefix) {
   const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${prefix}`;
 
-  // Use AbortController to implement a timeout for fetch so a hung request
-  // doesn't stall the whole query process.
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const resp = await fetch(url);
+  if (!resp.ok) return [];
 
-  try {
-    const resp = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
+  const text = await resp.text();
 
-    if (!resp.ok) {
-      console.warn(`listS3: non-OK response for ${url}: ${resp.status}`);
-      return [];
-    }
+  const parser = new DOMParser();
+  const xml = parser.parseFromString(text, "application/xml");
+  const contents = xml.getElementsByTagName("Contents");
 
-    const text = await resp.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, "application/xml");
-    const contents = xml.getElementsByTagName("Contents");
+  const files = [];
 
-    const files = [];
-    for (let item of contents) {
-      const keyNode = item.getElementsByTagName("Key")[0];
-      const sizeNode = item.getElementsByTagName("Size")[0];
-      const lmNode = item.getElementsByTagName("LastModified")[0];
-      if (!keyNode) continue;
-      files.push({
-        key: keyNode.textContent,
-        size: sizeNode ? parseInt(sizeNode.textContent) : 0,
-        lastModified: lmNode ? lmNode.textContent : ''
-      });
-    }
-
-    return files;
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      console.warn(`listS3: request timed out for ${url}`);
-    } else {
-      console.error(`listS3: failed to fetch ${url}. This may be a CORS or network error.`, err);
-    }
-    return [];
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
-// ==========================
-// FIND NEAREST HOUR WITH FILES
-// ==========================
-async function findNearestHour(prefixes, baseDateISO, baseHour, maxOffsetHours = 6) {
-  // baseDateISO is YYYY-MM-DD, baseHour is string or number 'HH'
-  const baseDT = new Date(`${baseDateISO}T${String(baseHour).padStart(2, "0")}:00Z`);
-
-  // offsets in order: 0, +1, -1, +2, -2, ... up to maxOffsetHours
-  const offsets = [0];
-  for (let i = 1; i <= maxOffsetHours; i++) {
-    offsets.push(i);
-    offsets.push(-i);
+  for (let item of contents) {
+    files.push({
+      key: item.getElementsByTagName("Key")[0].textContent,
+      size: parseInt(item.getElementsByTagName("Size")[0].textContent),
+      lastModified: item.getElementsByTagName("LastModified")[0].textContent
+    });
   }
 
-  for (let offset of offsets) {
-    const testDT = new Date(baseDT.getTime() + offset * 3600_000);
-
-    const y = testDT.getUTCFullYear();
-    const startOfYear = new Date(Date.UTC(y, 0, 1));
-    const doy = String(Math.floor((Date.UTC(testDT.getUTCFullYear(), testDT.getUTCMonth(), testDT.getUTCDate()) - startOfYear) / 86400000) + 1).padStart(3, "0");
-    const h = String(testDT.getUTCHours()).padStart(2, "0");
-
-    // Build prefixes for this test hour
-    const prefixList = prefixes.map(p => ({
-      key: `${p.prod}/${y}/${doy}/${h}/`,
-      bucket: p.bucket,
-      meta: p
-    }));
-
-    // Query prefixes sequentially to avoid too many concurrent requests
-    // and to allow early exit when any files are found for this hour.
-    const foundMap = new Map();
-    let anyFound = false;
-
-    for (let pr of prefixList) {
-      // Respect a global cancel if query was aborted
-      if (isQuerying === false) return null;
-
-      try {
-        const files = await listS3(pr.bucket, pr.key);
-        if (files && files.length > 0) {
-          const prodKey = `${pr.meta.prod}::${pr.meta.band || ''}::${pr.meta.sat}`;
-          foundMap.set(prodKey, files);
-          anyFound = true;
-          // Keep checking other prefixes for this hour to gather more products,
-          // but we will not spawn them in parallel.
-        }
-      } catch (e) {
-        // listS3 never throws (it returns []), but keep safe catch here.
-        console.warn('findNearestHour: error checking prefix', pr, e);
-      }
-    }
-
-    if (anyFound) {
-      return { testDT, h, foundMap };
-    }
-  }
-
-  return null; // nothing found in window
-}
-
-// ==========================
-// QUERY BUTTON STATE / UI INIT
-// ==========================
-function updateQueryButtonState() {
-  // If there are satellites available in the select, allow queries
-  // even if none are currently selected (user can query all products).
-  const satsAvailable = satSelect && satSelect.options && satSelect.options.length > 0;
-
-  if (!satsAvailable) {
-    queryBtn.disabled = true;
-    queryStatus.textContent = "No satellites available to query.";
-    return;
-  }
-
-  // Enable the button when there are satellites in the UI; leave
-  // a gentle prompt if the user hasn't selected any (they can query all).
-  queryBtn.disabled = false;
-  if (selectedSatellites.size === 0) {
-    queryStatus.textContent = "No satellites selected — query will search all satellites.";
-  } else {
-    queryStatus.textContent = "";
-  }
-}
-
-function setDefaultDateTimeInputs() {
-  const now = new Date();
-  const utcYear = now.getUTCFullYear();
-  const utcMonth = String(now.getUTCMonth() + 1).padStart(2, "0");
-  const utcDay = String(now.getUTCDate()).padStart(2, "0");
-  const today = `${utcYear}-${utcMonth}-${utcDay}`;
-  const utcHour = String(now.getUTCHours()).padStart(2, "0");
-
-  const singleDate = document.getElementById("single-date");
-  const singleHour = document.getElementById("single-hour");
-  const startDate = document.getElementById("range-start-date");
-  const endDate = document.getElementById("range-end-date");
-  const startHour = document.getElementById("range-start-hour");
-  const endHour = document.getElementById("range-end-hour");
-
-  if (singleDate) singleDate.value = today;
-  if (singleHour) singleHour.value = utcHour;
-
-  if (startDate) startDate.value = today;
-  if (endDate) endDate.value = today;
-  if (startHour) startHour.value = utcHour;
-  if (endHour) endHour.value = utcHour;
+  return files;
 }
 
 // ==========================
@@ -495,27 +234,17 @@ function buildPrefixes() {
   const prefixes = [];
 
   [...selectedSatellites].forEach(sat => {
-    // If no products are explicitly selected, query all products for the
-    // satellite (optionally filtered by selected sensors).
-    const satProducts = CONFIG.satellites[sat].products || {};
-    let prodList = [...selectedProducts];
-
-    if (prodList.length === 0) {
-      // include all products that match the selected sensors (if any)
-      prodList = Object.keys(satProducts).filter(prodKey => {
-        const sensor = prodKey.split("-")[0];
-        return selectedSensors.size === 0 || selectedSensors.has(sensor);
-      });
-    }
-
-    prodList.forEach(prod => {
+    [...selectedProducts].forEach(prod => {
+      let sensors = CONFIG.satellites[sat].products;
       const bucket = CONFIG.satellites[sat].bucket;
+
       const isABI = prod.startsWith("ABI");
 
-      // If ABI and user didn't pick bands, query all ABI bands
-      const bands = isABI ? (selectedBands.size ? [...selectedBands] : [...CONFIG.ABI_BANDS]) : [null];
+      let bands = isABI ? [...selectedBands] : [null];
 
-      bands.forEach(band => prefixes.push({ sat, bucket, prod, band }));
+      bands.forEach(band => {
+        prefixes.push({ sat, bucket, prod, band });
+      });
     });
   });
 
@@ -559,43 +288,24 @@ function generateHours() {
 // MAIN QUERY
 // ==========================
 queryBtn.addEventListener("click", async () => {
-  if (isQuerying) return; // avoid double clicks
-  isQuerying = true;
-  queryBtn.disabled = true;
   queryStatus.textContent = "Querying AWS… please wait.";
   resultsTable.innerHTML = "";
   FILE_RESULTS = [];
-  // Ensure selected sets reflect current select values
-  if (satSelect) selectedSatellites = new Set(getSelectValues(satSelect));
-  if (sensorSelect) selectedSensors = new Set(getSelectValues(sensorSelect));
-  if (productSelect) selectedProducts = new Set(getSelectValues(productSelect));
-  if (bandSelect) selectedBands = new Set(getSelectValues(bandSelect));
 
   const prefixes = buildPrefixes();
   const hours = generateHours();
 
-  const mode = document.querySelector("input[name='time-mode']:checked").value;
+  for (let hour of hours) {
+    const [date, hourVal] = hour.split(" ");
+    const y = date.split("-")[0];
+    const m = date.split("-")[1];
+    const d = date.split("-")[2];
+    const h = hourVal.padStart(2, "0");
 
-  if (mode === "single") {
-    // For single mode, try to find nearest hour (within +/- 6 hours) that has any files.
-    const [date, hourVal] = hours[0].split(" ");
-
-    queryStatus.textContent = "Searching nearest available hour (±6h)…";
-    const nearest = await findNearestHour(prefixes, date, hourVal, 6);
-    if (nearest === null) {
-      queryStatus.textContent = "No files found within +/-6 hours.";
-      renderResults();
-      isQuerying = false;
-      updateQueryButtonState();
-      return;
-    }
-
-    // use the found hour and its results
-    const { testDT, h, foundMap } = nearest;
-    // for each prefix, try to get the files (we already have some in foundMap)
     for (let p of prefixes) {
-      const keyMeta = `${p.prod}::${p.band || ''}::${p.sat}`;
-      const files = foundMap.get(keyMeta) || [];
+      const prefix = `${p.prod}/${y}/${m}/${d}/${h}/`;
+
+      const files = await listS3(p.bucket, prefix);
 
       files.forEach(f => {
         FILE_RESULTS.push({
@@ -609,49 +319,10 @@ queryBtn.addEventListener("click", async () => {
         });
       });
     }
-  } else {
-    // RANGE MODE (existing behavior)
-    let processed = 0;
-    for (let hour of hours) {
-      const [date, hourVal] = hour.split(" ");
-      const dt = new Date(`${date}T00:00Z`);
-      const y = dt.getUTCFullYear();
-
-      // Build day-of-year as 3-digit DOY (GOES S3 keys use DOY not month/day)
-      const startOfYear = new Date(Date.UTC(y, 0, 1));
-      const doy = String(Math.floor((dt - startOfYear) / 86400000) + 1).padStart(3, "0");
-      const h = hourVal.padStart(2, "0");
-
-      for (let p of prefixes) {
-        const prefix = `${p.prod}/${y}/${doy}/${h}/`;
-
-        // Give user progress feedback in the status box.
-        queryStatus.textContent = `Querying ${p.sat} ${p.prod} ${date} ${h}...`;
-
-        const files = await listS3(p.bucket, prefix);
-
-        files.forEach(f => {
-          FILE_RESULTS.push({
-            satellite: p.sat,
-            bucket: p.bucket,
-            product: p.prod,
-            band: p.band || "",
-            key: f.key,
-            size: (f.size / 1_000_000).toFixed(2),
-            lastModified: f.lastModified
-          });
-        });
-      }
-
-      processed++;
-      queryStatus.textContent = `Processed ${processed}/${hours.length} hour(s) — found ${FILE_RESULTS.length} files so far.`;
-    }
   }
 
   renderResults();
-  queryStatus.textContent = `Done. Found ${FILE_RESULTS.length} files.`;
-  isQuerying = false;
-  updateQueryButtonState();
+  queryStatus.textContent = "Done.";
 });
 
 // ==========================
@@ -666,8 +337,6 @@ function renderResults() {
   FILE_RESULTS.forEach((f, i) => {
     const tr = document.createElement("tr");
 
-    const fileUrl = `https://${f.bucket}.s3.amazonaws.com/${encodeURI(f.key)}`;
-
     tr.innerHTML = `
       <td><input type="checkbox" class="file-select" data-idx="${i}"></td>
       <td>${f.satellite}</td>
@@ -675,8 +344,8 @@ function renderResults() {
       <td>${f.product.split("-")[0]}</td>
       <td>${f.product}</td>
       <td>${f.band}</td>
-      <td><a href="${fileUrl}" target="_blank" rel="noreferrer">${f.key}</a></td>
-      <td>${Number(f.size).toLocaleString()} MB</td>
+      <td>${f.key}</td>
+      <td>${f.size}</td>
       <td>${f.lastModified}</td>
     `;
 
@@ -726,38 +395,4 @@ copyUrlsBtn.addEventListener("click", async () => {
 // ==========================
 // INIT
 // ==========================
-// Wrap initialization in DOMContentLoaded to ensure elements exist and
-// to make debugging easier. Print diagnostic logs so we can see what
-// the page loaded and which DOM elements are available.
-document.addEventListener('DOMContentLoaded', () => {
-  try {
-    console.log('GOES Downloader init:', {
-      CONFIG_present: typeof CONFIG !== 'undefined',
-      satellites: CONFIG ? Object.keys(CONFIG.satellites || {}) : null,
-      elements: {
-        satSelect: !!satSelect,
-        sensorSelect: !!sensorSelect,
-        productSelect: !!productSelect,
-        bandSelect: !!bandSelect,
-        satContainer: !!satContainer
-      }
-    });
-
-    setDefaultDateTimeInputs();
-    loadSatellites();
-      // Ensure our selected* sets reflect the selects' current values
-      if (satSelect) selectedSatellites = new Set(getSelectValues(satSelect));
-      if (sensorSelect) selectedSensors = new Set(getSelectValues(sensorSelect));
-      if (productSelect) selectedProducts = new Set(getSelectValues(productSelect));
-      if (bandSelect) selectedBands = new Set(getSelectValues(bandSelect));
-
-      // populate dependent selects on load (show available sensors/products)
-      populateSensorsSelect();
-      populateProductsSelect();
-      populateBandsSelect();
-
-      updateQueryButtonState();
-  } catch (err) {
-    console.error('Init error in script.js:', err);
-  }
-});
+loadSatellites();
