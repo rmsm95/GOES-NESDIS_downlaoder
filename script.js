@@ -52,27 +52,6 @@ function clearContainer(el) {
   el.innerHTML = "";
 }
 
-/**
- * Convert a size in bytes to a human-friendly string.
- * Uses base 1024 (KiB/MiB/GiB).
- */
-function formatBytes(bytes) {
-  if (bytes === null || bytes === undefined || isNaN(bytes)) {
-    return "";
-  }
-  if (bytes === 0) {
-    return "0 B";
-  }
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let i = 0;
-  let value = bytes;
-  while (value >= 1024 && i < units.length - 1) {
-    value /= 1024;
-    i++;
-  }
-  return value.toFixed(2) + " " + units[i];
-}
-
 // ==========================
 // POPULATE SELECT ELEMENTS
 // ==========================
@@ -94,7 +73,7 @@ function populateSatellitesSelect() {
     updateQueryButtonState();
   };
   // Auto-select all satellites on page load
-  Array.from(satSelect.options).forEach(opt => (opt.selected = true));
+  Array.from(satSelect.options).forEach(opt => opt.selected = true);
   selectedSatellites = new Set(getSelectValues(satSelect));
 }
 
@@ -103,28 +82,21 @@ function populateSensorsSelect() {
   sensorSelect.innerHTML = "";
 
   const sensors = new Set();
-  const satsToScan = selectedSatellites.size
-    ? [...selectedSatellites]
-    : Object.keys(CONFIG.satellites);
+  const satsToScan = selectedSatellites.size ? [...selectedSatellites] : Object.keys(CONFIG.satellites);
   satsToScan.forEach(sat => {
-    const prods =
-      CONFIG.satellites[sat] && CONFIG.satellites[sat].products
-        ? CONFIG.satellites[sat].products
-        : {};
+    const prods = CONFIG.satellites[sat] && CONFIG.satellites[sat].products ? CONFIG.satellites[sat].products : {};
     Object.keys(prods).forEach(p => {
       const sensor = p.split("-")[0];
       sensors.add(sensor);
     });
   });
 
-  Array.from(sensors)
-    .sort()
-    .forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s;
-      opt.textContent = s;
-      sensorSelect.appendChild(opt);
-    });
+  Array.from(sensors).sort().forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    sensorSelect.appendChild(opt);
+  });
 
   sensorSelect.onchange = () => {
     selectedSensors = new Set(getSelectValues(sensorSelect));
@@ -138,12 +110,9 @@ function populateProductsSelect() {
   productSelect.innerHTML = "";
 
   const prodsMap = {};
-  const satsToScan = selectedSatellites.size
-    ? [...selectedSatellites]
-    : Object.keys(CONFIG.satellites);
+  const satsToScan = selectedSatellites.size ? [...selectedSatellites] : Object.keys(CONFIG.satellites);
   satsToScan.forEach(sat => {
-    const satProducts =
-      (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
+    const satProducts = (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
     Object.keys(satProducts).forEach(prod => {
       const sensor = prod.split("-")[0];
       if (selectedSensors.size === 0 || selectedSensors.has(sensor)) {
@@ -152,14 +121,12 @@ function populateProductsSelect() {
     });
   });
 
-  Object.keys(prodsMap)
-    .sort()
-    .forEach(prod => {
-      const opt = document.createElement("option");
-      opt.value = prod;
-      opt.textContent = `${prod} — ${prodsMap[prod].name || ""}`;
-      productSelect.appendChild(opt);
-    });
+  Object.keys(prodsMap).sort().forEach(prod => {
+    const opt = document.createElement("option");
+    opt.value = prod;
+    opt.textContent = `${prod} — ${prodsMap[prod].name || ''}`;
+    productSelect.appendChild(opt);
+  });
 
   productSelect.onchange = () => {
     selectedProducts = new Set(getSelectValues(productSelect));
@@ -170,17 +137,19 @@ function populateProductsSelect() {
 function populateBandsSelect() {
   if (!bandSelect) return;
   bandSelect.innerHTML = "";
+  console.log('populateBandsSelect: selectedSatellites=', [...selectedSatellites]);
+  console.log('populateBandsSelect: selectedSensors=', [...selectedSensors]);
+  console.log('populateBandsSelect: selectedProducts=', [...selectedProducts]);
   // Build a list of candidate products to inspect for bands.
+  // If the user selected explicit products, use those; otherwise derive
+  // products from selected satellites/sensors (like populateProductsSelect).
   let prodCandidates = getSelectValues(productSelect);
 
   if (prodCandidates.length === 0) {
-    const satsToScan = selectedSatellites.size
-      ? [...selectedSatellites]
-      : Object.keys(CONFIG.satellites);
+    const satsToScan = selectedSatellites.size ? [...selectedSatellites] : Object.keys(CONFIG.satellites);
     const prods = new Set();
     satsToScan.forEach(sat => {
-      const satProducts =
-        (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
+      const satProducts = (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
       Object.keys(satProducts).forEach(prod => {
         const sensor = prod.split("-")[0];
         if (selectedSensors.size === 0 || selectedSensors.has(sensor)) {
@@ -194,24 +163,23 @@ function populateBandsSelect() {
   const bandsSet = new Set();
 
   prodCandidates.forEach(prodKey => {
+    // debug
+    // console.log('checking prodKey:', prodKey);
     // find product definition across satellites
     for (const sName of Object.keys(CONFIG.satellites)) {
-      const satProd =
-        CONFIG.satellites[sName].products &&
-        CONFIG.satellites[sName].products[prodKey];
-      if (
-        satProd &&
-        Array.isArray(satProd.bands) &&
-        satProd.bands.length > 0
-      ) {
+      const satProd = CONFIG.satellites[sName].products && CONFIG.satellites[sName].products[prodKey];
+      if (satProd && Array.isArray(satProd.bands) && satProd.bands.length > 0) {
         satProd.bands.forEach(b => bandsSet.add(b));
       }
       // ABI special-case: if product key startsWith ABI and no explicit bands listed, use CONFIG ABI list
-      if (!satProd && prodKey.startsWith("ABI")) {
+      if (!satProd && prodKey.startsWith('ABI')) {
         (CONFIG.ABI_BANDS || []).forEach(b => bandsSet.add(b));
       }
     }
   });
+
+  console.log('populateBandsSelect: prodCandidates count=', prodCandidates.length);
+  console.log('populateBandsSelect: bandsSet=', Array.from(bandsSet).sort());
 
   if (bandsSet.size === 0) {
     // nothing to show
@@ -224,12 +192,7 @@ function populateBandsSelect() {
   sorted.forEach(b => {
     const opt = document.createElement("option");
     opt.value = b;
-    const name =
-      CONFIG.bandInfo &&
-      CONFIG.bandInfo[b] &&
-      CONFIG.bandInfo[b].name
-        ? ` — ${CONFIG.bandInfo[b].name}`
-        : "";
+    const name = (CONFIG.bandInfo && CONFIG.bandInfo[b] && CONFIG.bandInfo[b].name) ? ` — ${CONFIG.bandInfo[b].name}` : '';
     opt.textContent = b + name;
     bandSelect.appendChild(opt);
   });
@@ -238,18 +201,16 @@ function populateBandsSelect() {
   bandSelect.addEventListener("change", () => {
     selectedBands = new Set(getSelectValues(bandSelect));
   });
-}
+});
 
 // ==========================
 // AWS S3 LISTING WITH TIMEOUT (Proxy-first, then fallback)
 // ==========================
 async function listS3(bucket, prefix) {
   // First try local proxy to avoid CORS issues when available.
-  const PROXY_BASE =
-    window && window.PROXY_BASE ? window.PROXY_BASE : "http://localhost:3000";
-  const proxyUrl = `${PROXY_BASE}/api/list?bucket=${encodeURIComponent(
-    bucket
-  )}&prefix=${encodeURIComponent(prefix)}`;
+  // Use explicit proxy base so browser requests reach the proxy running on port 3000.
+  const PROXY_BASE = (window && window.PROXY_BASE) ? window.PROXY_BASE : 'http://localhost:3000';
+  const proxyUrl = `${PROXY_BASE}/api/list?bucket=${encodeURIComponent(bucket)}&prefix=${encodeURIComponent(prefix)}`;
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -263,20 +224,31 @@ async function listS3(bucket, prefix) {
         return json.contents.map(item => ({
           key: item.Key,
           size: item.Size ? parseInt(item.Size, 10) : 0,
-          lastModified: item.LastModified || ""
+          lastModified: item.LastModified || ''
         }));
       }
 
       if (json && json.error) {
+        console.warn('listS3: proxy returned error', json.error);
+        failedRequests++;
       }
     } else {
+      console.warn(`listS3: proxy non-OK response for ${proxyUrl}: ${resp.status}`);
+      failedRequests++;
     }
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.warn(`listS3: proxy request timed out for ${proxyUrl}`);
+    } else {
+      console.warn('listS3: proxy request failed', err);
+    }
+    failedRequests++;
     // fall through to direct S3 attempt
   }
 
   // Fallback: direct S3 ListBucketV2 call (may be blocked by CORS)
   const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${prefix}`;
+  // Use AbortController to implement a timeout
   const controller2 = new AbortController();
   const timeout2 = setTimeout(() => controller2.abort(), FETCH_TIMEOUT_MS);
 
@@ -285,6 +257,8 @@ async function listS3(bucket, prefix) {
     clearTimeout(timeout2);
 
     if (!resp.ok) {
+      console.warn(`listS3: non-OK response for ${url}: ${resp.status}`);
+      failedRequests++;
       return [];
     }
 
@@ -301,13 +275,20 @@ async function listS3(bucket, prefix) {
       if (!keyNode) continue;
       files.push({
         key: keyNode.textContent,
-        size: sizeNode ? parseInt(sizeNode.textContent, 10) : 0,
-        lastModified: lmNode ? lmNode.textContent : ""
+        size: sizeNode ? parseInt(sizeNode.textContent) : 0,
+        lastModified: lmNode ? lmNode.textContent : ''
       });
     }
 
     return files;
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.warn(`listS3: request timed out for ${url}`);
+      failedRequests++;
+    } else {
+      console.error(`listS3: failed to fetch ${url}. This may be a CORS or network error.`, err);
+      failedRequests++;
+    }
     return [];
   } finally {
     clearTimeout(timeout2);
@@ -347,16 +328,18 @@ async function findNearestHour(prefixes, baseDateISO, baseHour, maxOffsetHours =
     let anyFound = false;
 
     for (let pr of prefixList) {
+      // Respect a global cancel if query was aborted
       if (isQuerying === false) return null;
 
       try {
         const files = await listS3(pr.bucket, pr.key);
         if (files && files.length > 0) {
-          const prodKey = `${pr.meta.prod}::${pr.meta.band || ""}::${pr.meta.sat}`;
+          const prodKey = `${pr.meta.prod}::${pr.meta.band || ''}::${pr.meta.sat}`;
           foundMap.set(prodKey, files);
           anyFound = true;
         }
       } catch (e) {
+        console.warn('findNearestHour: error checking prefix', pr, e);
       }
     }
 
@@ -395,11 +378,7 @@ function buildPrefixes() {
       const isABI = prod.startsWith("ABI");
 
       // If ABI and user didn't pick bands, query all ABI bands
-      const bands = isABI
-        ? selectedBands.size
-          ? [...selectedBands]
-          : [...(CONFIG.ABI_BANDS || [])]
-        : [null];
+      const bands = isABI ? (selectedBands.size ? [...selectedBands] : [...(CONFIG.ABI_BANDS || [])]) : [null];
 
       bands.forEach(band => prefixes.push({ sat, bucket, prod, band }));
     });
@@ -433,7 +412,9 @@ function generateHours() {
   const arr = [];
 
   for (let t = start; t <= end; t.setHours(t.getHours() + 1)) {
-    arr.push(`${t.toISOString().substring(0, 10)} ${t.getUTCHours()}`);
+    arr.push(
+      `${t.toISOString().substring(0, 10)} ${t.getUTCHours()}`
+    );
   }
 
   return arr;
@@ -510,22 +491,10 @@ queryBtn.addEventListener("click", async () => {
     if (mode === "single") {
       // For single mode, query ONLY the exact hour specified (no nearest-hour fallback).
       const [date, hourVal] = hours[0].split(" ");
-      const dt = new Date(
-        `${date}T${String(hourVal).padStart(2, "0")}:00Z`
-      );
+      const dt = new Date(`${date}T${String(hourVal).padStart(2, "0")}:00Z`);
       const y = dt.getUTCFullYear();
       const startOfYear = new Date(Date.UTC(y, 0, 1));
-      const doy = String(
-        Math.floor(
-          (Date.UTC(
-            dt.getUTCFullYear(),
-            dt.getUTCMonth(),
-            dt.getUTCDate()
-          ) -
-            startOfYear) /
-            86400000
-        ) + 1
-      ).padStart(3, "0");
+      const doy = String(Math.floor((Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()) - startOfYear) / 86400000) + 1).padStart(3, "0");
       const h = String(dt.getUTCHours()).padStart(2, "0");
 
       queryStatus.textContent = `Querying ${date} ${h}:00 UTC…`;
@@ -542,7 +511,7 @@ queryBtn.addEventListener("click", async () => {
             product: p.prod,
             band: p.band || "",
             key: f.key,
-            size: f.size, // store raw bytes
+            size: (f.size / 1_000_000).toFixed(2),
             lastModified: f.lastModified
           });
         });
@@ -552,20 +521,20 @@ queryBtn.addEventListener("click", async () => {
       let processed = 0;
       for (let hour of hours) {
         if (isQuerying === false) break; // allow cancellation
-
+        
         const [date, hourVal] = hour.split(" ");
         const dt = new Date(`${date}T00:00Z`);
         const y = dt.getUTCFullYear();
 
+        // Build day-of-year as 3-digit DOY (GOES S3 keys use DOY not month/day)
         const startOfYear = new Date(Date.UTC(y, 0, 1));
-        const doy = String(
-          Math.floor((dt - startOfYear) / 86400000) + 1
-        ).padStart(3, "0");
+        const doy = String(Math.floor((dt - startOfYear) / 86400000) + 1).padStart(3, "0");
         const h = hourVal.padStart(2, "0");
 
         for (let p of prefixes) {
           const prefix = `${p.prod}/${y}/${doy}/${h}/`;
 
+          // Give user progress feedback in the status box.
           queryStatus.textContent = `Querying ${p.sat} ${p.prod} ${date} ${h}...`;
 
           const files = await listS3(p.bucket, prefix);
@@ -574,9 +543,7 @@ queryBtn.addEventListener("click", async () => {
             // If user selected specific bands, only include files matching that band
             if (selectedBands.size > 0) {
               const bandMatch = f.key.match(/-M\dC(\d{2})/);
-              const bandFromFile = bandMatch
-                ? `C${bandMatch[1]}`
-                : null;
+              const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
               if (!bandFromFile || !selectedBands.has(bandFromFile)) return;
             }
 
@@ -586,7 +553,7 @@ queryBtn.addEventListener("click", async () => {
               product: p.prod,
               band: p.band || "",
               key: f.key,
-              size: f.size, // store raw bytes
+              size: f.size ? parseInt(f.size, 10) : 0,
               lastModified: f.lastModified
             });
           });
@@ -600,11 +567,14 @@ queryBtn.addEventListener("click", async () => {
     renderResults();
     queryStatus.textContent = `Done. Found ${FILE_RESULTS.length} files.`;
   } catch (err) {
+    console.error('Query error:', err);
     queryStatus.textContent = `Error: ${err.message}`;
   } finally {
     isQuerying = false;
     if (failedRequests > 0) {
-      queryStatus.textContent += ` — ${failedRequests} request(s) timed out/blocked (CORS or network).`;
+      // Visible summary for user when requests timed out or were blocked
+      queryStatus.textContent += ` — ${failedRequests} request(s) timed out/blocked (CORS or network). Check console for details or use a server-side proxy.`;
+      // reset counter for next query
       failedRequests = 0;
     }
     updateQueryButtonState();
@@ -624,12 +594,10 @@ function renderResults() {
     const tr = document.createElement("tr");
 
     const fileUrl = `https://${f.bucket}.s3.amazonaws.com/${encodeURI(f.key)}`;
-
+    
     // Extract band from filename (e.g., "OR_ABI-L1b-RadF-M6C02_..." → "C02")
     const bandMatch = f.key.match(/-M\dC(\d{2})/);
-    const bandFromFile = bandMatch
-      ? `C${bandMatch[1]}`
-      : f.band || "";
+    const bandFromFile = bandMatch ? `C${bandMatch[1]}` : f.band || "";
 
     tr.innerHTML = `
       <td><input type="checkbox" class="file-select" data-idx="${i}"></td>
@@ -639,7 +607,7 @@ function renderResults() {
       <td>${f.product}</td>
       <td>${bandFromFile}</td>
       <td><a href="${fileUrl}" target="_blank" rel="noreferrer">${f.key}</a></td>
-      <td>${formatBytes(Number(f.size))}</td>
+      <td>${Number(f.size).toLocaleString()} MB</td>
       <td>${f.lastModified}</td>
     `;
 
@@ -679,9 +647,7 @@ copyUrlsBtn.addEventListener("click", async () => {
     .map(chk => FILE_RESULTS[chk.dataset.idx]);
 
   const text = selected
-    .map(
-      f => `https://${f.bucket}.s3.amazonaws.com/${f.key}`
-    )
+    .map(f => `https://${f.bucket}.s3.amazonaws.com/${f.key}`)
     .join("\n");
 
   await navigator.clipboard.writeText(text);
@@ -691,8 +657,20 @@ copyUrlsBtn.addEventListener("click", async () => {
 // ==========================
 // INITIALIZATION
 // ==========================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
   try {
+    console.log('GOES Downloader init:', {
+      CONFIG_present: typeof CONFIG !== 'undefined',
+      satellites: CONFIG ? Object.keys(CONFIG.satellites || {}) : null,
+      elements: {
+        satSelect: !!satSelect,
+        sensorSelect: !!sensorSelect,
+        productSelect: !!productSelect,
+        bandSelect: !!bandSelect,
+        queryBtn: !!queryBtn
+      }
+    });
+
     setDefaultDateTimeInputs();
     populateSatellitesSelect();
 
@@ -710,16 +688,16 @@ document.addEventListener("DOMContentLoaded", () => {
     updateQueryButtonState();
 
     // Wire band-select-all checkbox if present
-    const bandsSelectAll = document.getElementById("bands-select-all");
+    const bandsSelectAll = document.getElementById('bands-select-all');
     if (bandsSelectAll) {
-      bandsSelectAll.addEventListener("change", () => {
+      bandsSelectAll.addEventListener('change', () => {
         const opts = Array.from(bandSelect.options || []);
-        opts.forEach(o => (o.selected = bandsSelectAll.checked));
+        opts.forEach(o => o.selected = bandsSelectAll.checked);
         // trigger change handler manually
         selectedBands = new Set(getSelectValues(bandSelect));
       });
     }
   } catch (err) {
-    console.error("Init error in script.js:", err);
+    console.error('Init error in script.js:', err);
   }
 });
