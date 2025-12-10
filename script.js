@@ -355,6 +355,57 @@ async function listS3(bucket, prefix) {
 }
 
 // ==========================
+// FIND NEAREST HOUR WITH FILES
+// ==========================
+async function findNearestHour(prefixes, baseDateISO, baseHour, maxOffsetHours = 6) {
+  // baseDateISO is YYYY-MM-DD, baseHour is string or number 'HH'
+  const baseDT = new Date(`${baseDateISO}T${String(baseHour).padStart(2, "0")}:00Z`);
+
+  // offsets in order: 0, +1, -1, +2, -2, ... up to maxOffsetHours
+  const offsets = [0];
+  for (let i = 1; i <= maxOffsetHours; i++) {
+    offsets.push(i);
+    offsets.push(-i);
+  }
+
+  for (let offset of offsets) {
+    const testDT = new Date(baseDT.getTime() + offset * 3600_000);
+
+    const y = testDT.getUTCFullYear();
+    const startOfYear = new Date(Date.UTC(y, 0, 1));
+    const doy = String(Math.floor((Date.UTC(testDT.getUTCFullYear(), testDT.getUTCMonth(), testDT.getUTCDate()) - startOfYear) / 86400000) + 1).padStart(3, "0");
+    const h = String(testDT.getUTCHours()).padStart(2, "0");
+
+    // Build prefixes for this test hour
+    const prefixList = prefixes.map(p => ({
+      key: `${p.prod}/${y}/${doy}/${h}/`,
+      bucket: p.bucket,
+      meta: p
+    }));
+
+    // Query all prefixes in parallel (may be a lot of requests)
+    const checks = await Promise.all(prefixList.map(pr => listS3(pr.bucket, pr.key).then(files => ({ files, pr }))).catch(e => []));
+
+    const foundMap = new Map();
+    let anyFound = false;
+    for (let c of checks) {
+      if (!c) continue;
+      if (c.files && c.files.length > 0) {
+        anyFound = true;
+        const prodKey = `${c.pr.meta.prod}::${c.pr.meta.band || ''}::${c.pr.meta.sat}`;
+        foundMap.set(prodKey, c.files);
+      }
+    }
+
+    if (anyFound) {
+      return { testDT, h, foundMap };
+    }
+  }
+
+  return null; // nothing found in window
+}
+
+// ==========================
 // QUERY BUTTON STATE / UI INIT
 // ==========================
 function updateQueryButtonState() {
@@ -465,24 +516,34 @@ queryBtn.addEventListener("click", async () => {
   queryStatus.textContent = "Querying AWS… please wait.";
   resultsTable.innerHTML = "";
   FILE_RESULTS = [];
+  // Ensure selected sets reflect current select values
+  if (satSelect) selectedSatellites = new Set(getSelectValues(satSelect));
+  if (sensorSelect) selectedSensors = new Set(getSelectValues(sensorSelect));
+  if (productSelect) selectedProducts = new Set(getSelectValues(productSelect));
+  if (bandSelect) selectedBands = new Set(getSelectValues(bandSelect));
 
   const prefixes = buildPrefixes();
   const hours = generateHours();
 
-  for (let hour of hours) {
-    const [date, hourVal] = hour.split(" ");
-    const dt = new Date(`${date}T00:00Z`);
-    const y = dt.getUTCFullYear();
+  const mode = document.querySelector("input[name='time-mode']:checked").value;
 
-    // Build day-of-year as 3-digit DOY (GOES S3 keys use DOY not month/day)
-    const startOfYear = new Date(Date.UTC(y, 0, 1));
-    const doy = String(Math.floor((dt - startOfYear) / 86400000) + 1).padStart(3, "0");
-    const h = hourVal.padStart(2, "0");
+  if (mode === "single") {
+    // For single mode, try to find nearest hour (within +/- 6 hours) that has any files.
+    const [date, hourVal] = hours[0].split(" ");
 
+    const nearest = await findNearestHour(prefixes, date, hourVal, 6);
+    if (nearest === null) {
+      queryStatus.textContent = "No files found within +/-6 hours.";
+      renderResults();
+      return;
+    }
+
+    // use the found hour and its results
+    const { testDT, h, foundMap } = nearest;
+    // for each prefix, try to get the files (we already have some in foundMap)
     for (let p of prefixes) {
-      const prefix = `${p.prod}/${y}/${doy}/${h}/`;
-
-      const files = await listS3(p.bucket, prefix);
+      const keyMeta = `${p.prod}::${p.band || ''}::${p.sat}`;
+      const files = foundMap.get(keyMeta) || [];
 
       files.forEach(f => {
         FILE_RESULTS.push({
@@ -495,6 +556,36 @@ queryBtn.addEventListener("click", async () => {
           lastModified: f.lastModified
         });
       });
+    }
+  } else {
+    // RANGE MODE (existing behavior)
+    for (let hour of hours) {
+      const [date, hourVal] = hour.split(" ");
+      const dt = new Date(`${date}T00:00Z`);
+      const y = dt.getUTCFullYear();
+
+      // Build day-of-year as 3-digit DOY (GOES S3 keys use DOY not month/day)
+      const startOfYear = new Date(Date.UTC(y, 0, 1));
+      const doy = String(Math.floor((dt - startOfYear) / 86400000) + 1).padStart(3, "0");
+      const h = hourVal.padStart(2, "0");
+
+      for (let p of prefixes) {
+        const prefix = `${p.prod}/${y}/${doy}/${h}/`;
+
+        const files = await listS3(p.bucket, prefix);
+
+        files.forEach(f => {
+          FILE_RESULTS.push({
+            satellite: p.sat,
+            bucket: p.bucket,
+            product: p.prod,
+            band: p.band || "",
+            key: f.key,
+            size: (f.size / 1_000_000).toFixed(2),
+            lastModified: f.lastModified
+          });
+        });
+      }
     }
   }
 
