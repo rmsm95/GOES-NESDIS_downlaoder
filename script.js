@@ -40,6 +40,8 @@ let selectedProducts = new Set();
 let selectedBands = new Set();
 
 let FILE_RESULTS = []; // store results from AWS queries
+let isQuerying = false;
+const FETCH_TIMEOUT_MS = 10000; // 10s timeout per S3 request
 
 // ==========================
 // UI HELPERS
@@ -332,8 +334,15 @@ document.querySelectorAll("input[name='time-mode']").forEach(r => {
 async function listS3(bucket, prefix) {
   const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${prefix}`;
 
+  // Use AbortController to implement a timeout for fetch so a hung request
+  // doesn't stall the whole query process.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   try {
-    const resp = await fetch(url);
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
     if (!resp.ok) {
       console.warn(`listS3: non-OK response for ${url}: ${resp.status}`);
       return [];
@@ -345,14 +354,11 @@ async function listS3(bucket, prefix) {
     const contents = xml.getElementsByTagName("Contents");
 
     const files = [];
-
     for (let item of contents) {
       const keyNode = item.getElementsByTagName("Key")[0];
       const sizeNode = item.getElementsByTagName("Size")[0];
       const lmNode = item.getElementsByTagName("LastModified")[0];
-
       if (!keyNode) continue;
-
       files.push({
         key: keyNode.textContent,
         size: sizeNode ? parseInt(sizeNode.textContent) : 0,
@@ -362,8 +368,14 @@ async function listS3(bucket, prefix) {
 
     return files;
   } catch (err) {
-    console.error(`listS3: failed to fetch ${url}. This may be a CORS or network error.`, err);
+    if (err.name === 'AbortError') {
+      console.warn(`listS3: request timed out for ${url}`);
+    } else {
+      console.error(`listS3: failed to fetch ${url}. This may be a CORS or network error.`, err);
+    }
     return [];
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -396,17 +408,27 @@ async function findNearestHour(prefixes, baseDateISO, baseHour, maxOffsetHours =
       meta: p
     }));
 
-    // Query all prefixes in parallel (may be a lot of requests)
-    const checks = await Promise.all(prefixList.map(pr => listS3(pr.bucket, pr.key).then(files => ({ files, pr }))).catch(e => []));
-
+    // Query prefixes sequentially to avoid too many concurrent requests
+    // and to allow early exit when any files are found for this hour.
     const foundMap = new Map();
     let anyFound = false;
-    for (let c of checks) {
-      if (!c) continue;
-      if (c.files && c.files.length > 0) {
-        anyFound = true;
-        const prodKey = `${c.pr.meta.prod}::${c.pr.meta.band || ''}::${c.pr.meta.sat}`;
-        foundMap.set(prodKey, c.files);
+
+    for (let pr of prefixList) {
+      // Respect a global cancel if query was aborted
+      if (isQuerying === false) return null;
+
+      try {
+        const files = await listS3(pr.bucket, pr.key);
+        if (files && files.length > 0) {
+          const prodKey = `${pr.meta.prod}::${pr.meta.band || ''}::${pr.meta.sat}`;
+          foundMap.set(prodKey, files);
+          anyFound = true;
+          // Keep checking other prefixes for this hour to gather more products,
+          // but we will not spawn them in parallel.
+        }
+      } catch (e) {
+        // listS3 never throws (it returns []), but keep safe catch here.
+        console.warn('findNearestHour: error checking prefix', pr, e);
       }
     }
 
@@ -537,6 +559,9 @@ function generateHours() {
 // MAIN QUERY
 // ==========================
 queryBtn.addEventListener("click", async () => {
+  if (isQuerying) return; // avoid double clicks
+  isQuerying = true;
+  queryBtn.disabled = true;
   queryStatus.textContent = "Querying AWS… please wait.";
   resultsTable.innerHTML = "";
   FILE_RESULTS = [];
@@ -555,10 +580,13 @@ queryBtn.addEventListener("click", async () => {
     // For single mode, try to find nearest hour (within +/- 6 hours) that has any files.
     const [date, hourVal] = hours[0].split(" ");
 
+    queryStatus.textContent = "Searching nearest available hour (±6h)…";
     const nearest = await findNearestHour(prefixes, date, hourVal, 6);
     if (nearest === null) {
       queryStatus.textContent = "No files found within +/-6 hours.";
       renderResults();
+      isQuerying = false;
+      updateQueryButtonState();
       return;
     }
 
@@ -583,6 +611,7 @@ queryBtn.addEventListener("click", async () => {
     }
   } else {
     // RANGE MODE (existing behavior)
+    let processed = 0;
     for (let hour of hours) {
       const [date, hourVal] = hour.split(" ");
       const dt = new Date(`${date}T00:00Z`);
@@ -595,6 +624,9 @@ queryBtn.addEventListener("click", async () => {
 
       for (let p of prefixes) {
         const prefix = `${p.prod}/${y}/${doy}/${h}/`;
+
+        // Give user progress feedback in the status box.
+        queryStatus.textContent = `Querying ${p.sat} ${p.prod} ${date} ${h}...`;
 
         const files = await listS3(p.bucket, prefix);
 
@@ -610,11 +642,16 @@ queryBtn.addEventListener("click", async () => {
           });
         });
       }
+
+      processed++;
+      queryStatus.textContent = `Processed ${processed}/${hours.length} hour(s) — found ${FILE_RESULTS.length} files so far.`;
     }
   }
 
   renderResults();
-  queryStatus.textContent = "Done.";
+  queryStatus.textContent = `Done. Found ${FILE_RESULTS.length} files.`;
+  isQuerying = false;
+  updateQueryButtonState();
 });
 
 // ==========================
