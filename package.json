@@ -1,0 +1,15 @@
+{
+  "name": "goes-proxy",
+  "version": "0.1.0",
+  "description": "Simple proxy to list AWS S3 bucket contents for GOES downloader (avoids CORS)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "axios": "^1.4.0",
+    "xml2js": "^0.4.23",
+    "cors": "^2.8.5"
+  }
+}

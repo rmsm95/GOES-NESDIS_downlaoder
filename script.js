@@ -36,6 +36,7 @@ let selectedBands = new Set();
 let FILE_RESULTS = []; // store results from AWS queries
 let isQuerying = false;
 const FETCH_TIMEOUT_MS = 10000; // 10s timeout per S3 request
+let failedRequests = 0;
 
 // ==========================
 // UTILITY FUNCTIONS
@@ -136,22 +137,59 @@ function populateProductsSelect() {
 function populateBandsSelect() {
   if (!bandSelect) return;
   bandSelect.innerHTML = "";
+  // Build a list of candidate products to inspect for bands.
+  // If the user selected explicit products, use those; otherwise derive
+  // products from selected satellites/sensors (like populateProductsSelect).
+  let prodCandidates = getSelectValues(productSelect);
 
-  // Determine if any selected product is ABI
-  const abiSelected = getSelectValues(productSelect).some(p => p.startsWith("ABI"));
+  if (prodCandidates.length === 0) {
+    const satsToScan = selectedSatellites.size ? [...selectedSatellites] : Object.keys(CONFIG.satellites);
+    const prods = new Set();
+    satsToScan.forEach(sat => {
+      const satProducts = (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
+      Object.keys(satProducts).forEach(prod => {
+        const sensor = prod.split("-")[0];
+        if (selectedSensors.size === 0 || selectedSensors.has(sensor)) {
+          prods.add(prod);
+        }
+      });
+    });
+    prodCandidates = [...prods];
+  }
 
-  if (!abiSelected) {
+  const bandsSet = new Set();
+
+  prodCandidates.forEach(prodKey => {
+    // find product definition across satellites
+    for (const sName of Object.keys(CONFIG.satellites)) {
+      const satProd = CONFIG.satellites[sName].products && CONFIG.satellites[sName].products[prodKey];
+      if (satProd && Array.isArray(satProd.bands) && satProd.bands.length > 0) {
+        satProd.bands.forEach(b => bandsSet.add(b));
+      }
+      // ABI special-case: if product key startsWith ABI and no explicit bands listed, use CONFIG ABI list
+      if (!satProd && prodKey.startsWith('ABI')) {
+        (CONFIG.ABI_BANDS || []).forEach(b => bandsSet.add(b));
+      }
+    }
+  });
+
+  if (bandsSet.size === 0) {
+    // nothing to show
+    selectedBands = new Set();
     return;
   }
 
-  const bands = CONFIG.ABI_BANDS || [];
-  bands.forEach(b => {
+  // Render bands
+  const sorted = Array.from(bandsSet).sort();
+  sorted.forEach(b => {
     const opt = document.createElement("option");
     opt.value = b;
-    opt.textContent = b + (CONFIG.bandInfo && CONFIG.bandInfo[b] ? ` — ${CONFIG.bandInfo[b].name}` : "");
+    const name = (CONFIG.bandInfo && CONFIG.bandInfo[b] && CONFIG.bandInfo[b].name) ? ` — ${CONFIG.bandInfo[b].name}` : '';
+    opt.textContent = b + name;
     bandSelect.appendChild(opt);
   });
 
+  // sync selectedBands when user changes the band select
   bandSelect.addEventListener("change", () => {
     selectedBands = new Set(getSelectValues(bandSelect));
   });
@@ -175,21 +213,61 @@ document.querySelectorAll("input[name='time-mode']").forEach(r => {
 });
 
 // ==========================
-// AWS S3 LISTING WITH TIMEOUT
+// AWS S3 LISTING WITH TIMEOUT (Proxy-first, then fallback)
 // ==========================
 async function listS3(bucket, prefix) {
-  const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${prefix}`;
+  // First try local proxy to avoid CORS issues when available.
+  // Use explicit proxy base so browser requests reach the proxy running on port 3000.
+  const PROXY_BASE = (window && window.PROXY_BASE) ? window.PROXY_BASE : 'http://localhost:3000';
+  const proxyUrl = `${PROXY_BASE}/api/list?bucket=${encodeURIComponent(bucket)}&prefix=${encodeURIComponent(prefix)}`;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
+    const resp = await fetch(proxyUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (resp.ok) {
+      const json = await resp.json();
+      if (json && json.ok && Array.isArray(json.contents)) {
+        return json.contents.map(item => ({
+          key: item.Key,
+          size: item.Size ? parseInt(item.Size, 10) : 0,
+          lastModified: item.LastModified || ''
+        }));
+      }
+
+      if (json && json.error) {
+        console.warn('listS3: proxy returned error', json.error);
+        failedRequests++;
+      }
+    } else {
+      console.warn(`listS3: proxy non-OK response for ${proxyUrl}: ${resp.status}`);
+      failedRequests++;
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      console.warn(`listS3: proxy request timed out for ${proxyUrl}`);
+    } else {
+      console.warn('listS3: proxy request failed', err);
+    }
+    failedRequests++;
+    // fall through to direct S3 attempt
+  }
+
+  // Fallback: direct S3 ListBucketV2 call (may be blocked by CORS)
+  const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${prefix}`;
   // Use AbortController to implement a timeout
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const controller2 = new AbortController();
+  const timeout2 = setTimeout(() => controller2.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const resp = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeout);
+    const resp = await fetch(url, { signal: controller2.signal });
+    clearTimeout(timeout2);
 
     if (!resp.ok) {
       console.warn(`listS3: non-OK response for ${url}: ${resp.status}`);
+      failedRequests++;
       return [];
     }
 
@@ -215,12 +293,14 @@ async function listS3(bucket, prefix) {
   } catch (err) {
     if (err.name === 'AbortError') {
       console.warn(`listS3: request timed out for ${url}`);
+      failedRequests++;
     } else {
       console.error(`listS3: failed to fetch ${url}. This may be a CORS or network error.`, err);
+      failedRequests++;
     }
     return [];
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(timeout2);
   }
 }
 
@@ -396,6 +476,7 @@ queryBtn.addEventListener("click", async () => {
   if (isQuerying) return; // avoid double clicks
   isQuerying = true;
   queryBtn.disabled = true;
+  failedRequests = 0;
   queryStatus.textContent = "Querying AWS… please wait.";
   resultsTable.innerHTML = "";
   FILE_RESULTS = [];
@@ -493,6 +574,12 @@ queryBtn.addEventListener("click", async () => {
     queryStatus.textContent = `Error: ${err.message}`;
   } finally {
     isQuerying = false;
+    if (failedRequests > 0) {
+      // Visible summary for user when requests timed out or were blocked
+      queryStatus.textContent += ` — ${failedRequests} request(s) timed out/blocked (CORS or network). Check console for details or use a server-side proxy.`;
+      // reset counter for next query
+      failedRequests = 0;
+    }
     updateQueryButtonState();
   }
 });
@@ -598,6 +685,17 @@ document.addEventListener('DOMContentLoaded', () => {
     populateBandsSelect();
 
     updateQueryButtonState();
+
+    // Wire band-select-all checkbox if present
+    const bandsSelectAll = document.getElementById('bands-select-all');
+    if (bandsSelectAll) {
+      bandsSelectAll.addEventListener('change', () => {
+        const opts = Array.from(bandSelect.options || []);
+        opts.forEach(o => o.selected = bandsSelectAll.checked);
+        // trigger change handler manually
+        selectedBands = new Set(getSelectValues(bandSelect));
+      });
+    }
   } catch (err) {
     console.error('Init error in script.js:', err);
   }
