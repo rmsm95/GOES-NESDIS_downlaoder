@@ -1,7 +1,9 @@
-// ==========================
-// IMPORT CONFIG
-// ==========================
-import CONFIG from "./config.js";
+// =========================
+// CONFIG (loaded from `config.js` included before this script)
+// =========================
+// `config.js` is included as a normal script in the page, so `CONFIG`
+// is available as a global identifier. Avoid ES module `import` here
+// to keep the page loading simple.
 
 // ==========================
 // DOM ELEMENTS
@@ -89,6 +91,7 @@ function loadSatellites() {
       isSelected ? selectedSatellites.add(id) : selectedSatellites.delete(id);
       loadSensors();
       loadProducts();
+      updateQueryButtonState();
     });
   });
 }
@@ -228,23 +231,70 @@ async function listS3(bucket, prefix) {
 }
 
 // ==========================
+// QUERY BUTTON STATE / UI INIT
+// ==========================
+function updateQueryButtonState() {
+  if (selectedSatellites.size === 0) {
+    queryBtn.disabled = true;
+    queryStatus.textContent = "Please select at least one satellite.";
+  } else {
+    queryBtn.disabled = false;
+    queryStatus.textContent = "";
+  }
+}
+
+function setDefaultDateTimeInputs() {
+  const now = new Date();
+  const utcYear = now.getUTCFullYear();
+  const utcMonth = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const utcDay = String(now.getUTCDate()).padStart(2, "0");
+  const today = `${utcYear}-${utcMonth}-${utcDay}`;
+  const utcHour = String(now.getUTCHours()).padStart(2, "0");
+
+  const singleDate = document.getElementById("single-date");
+  const singleHour = document.getElementById("single-hour");
+  const startDate = document.getElementById("range-start-date");
+  const endDate = document.getElementById("range-end-date");
+  const startHour = document.getElementById("range-start-hour");
+  const endHour = document.getElementById("range-end-hour");
+
+  if (singleDate) singleDate.value = today;
+  if (singleHour) singleHour.value = utcHour;
+
+  if (startDate) startDate.value = today;
+  if (endDate) endDate.value = today;
+  if (startHour) startHour.value = utcHour;
+  if (endHour) endHour.value = utcHour;
+}
+
+// ==========================
 // BUILD PREFIX FOR EACH FILE TYPE
 // ==========================
 function buildPrefixes() {
   const prefixes = [];
 
   [...selectedSatellites].forEach(sat => {
-    [...selectedProducts].forEach(prod => {
-      let sensors = CONFIG.satellites[sat].products;
-      const bucket = CONFIG.satellites[sat].bucket;
+    // If no products are explicitly selected, query all products for the
+    // satellite (optionally filtered by selected sensors).
+    const satProducts = CONFIG.satellites[sat].products || {};
+    let prodList = [...selectedProducts];
 
+    if (prodList.length === 0) {
+      // include all products that match the selected sensors (if any)
+      prodList = Object.keys(satProducts).filter(prodKey => {
+        const sensor = prodKey.split("-")[0];
+        return selectedSensors.size === 0 || selectedSensors.has(sensor);
+      });
+    }
+
+    prodList.forEach(prod => {
+      const bucket = CONFIG.satellites[sat].bucket;
       const isABI = prod.startsWith("ABI");
 
-      let bands = isABI ? [...selectedBands] : [null];
+      // If ABI and user didn't pick bands, query all ABI bands
+      const bands = isABI ? (selectedBands.size ? [...selectedBands] : [...CONFIG.ABI_BANDS]) : [null];
 
-      bands.forEach(band => {
-        prefixes.push({ sat, bucket, prod, band });
-      });
+      bands.forEach(band => prefixes.push({ sat, bucket, prod, band }));
     });
   });
 
@@ -297,13 +347,16 @@ queryBtn.addEventListener("click", async () => {
 
   for (let hour of hours) {
     const [date, hourVal] = hour.split(" ");
-    const y = date.split("-")[0];
-    const m = date.split("-")[1];
-    const d = date.split("-")[2];
+    const dt = new Date(`${date}T00:00Z`);
+    const y = dt.getUTCFullYear();
+
+    // Build day-of-year as 3-digit DOY (GOES S3 keys use DOY not month/day)
+    const startOfYear = new Date(Date.UTC(y, 0, 1));
+    const doy = String(Math.floor((dt - startOfYear) / 86400000) + 1).padStart(3, "0");
     const h = hourVal.padStart(2, "0");
 
     for (let p of prefixes) {
-      const prefix = `${p.prod}/${y}/${m}/${d}/${h}/`;
+      const prefix = `${p.prod}/${y}/${doy}/${h}/`;
 
       const files = await listS3(p.bucket, prefix);
 
@@ -337,6 +390,8 @@ function renderResults() {
   FILE_RESULTS.forEach((f, i) => {
     const tr = document.createElement("tr");
 
+    const fileUrl = `https://${f.bucket}.s3.amazonaws.com/${encodeURI(f.key)}`;
+
     tr.innerHTML = `
       <td><input type="checkbox" class="file-select" data-idx="${i}"></td>
       <td>${f.satellite}</td>
@@ -344,8 +399,8 @@ function renderResults() {
       <td>${f.product.split("-")[0]}</td>
       <td>${f.product}</td>
       <td>${f.band}</td>
-      <td>${f.key}</td>
-      <td>${f.size}</td>
+      <td><a href="${fileUrl}" target="_blank" rel="noreferrer">${f.key}</a></td>
+      <td>${Number(f.size).toLocaleString()} MB</td>
       <td>${f.lastModified}</td>
     `;
 
@@ -395,4 +450,6 @@ copyUrlsBtn.addEventListener("click", async () => {
 // ==========================
 // INIT
 // ==========================
+setDefaultDateTimeInputs();
 loadSatellites();
+updateQueryButtonState();
