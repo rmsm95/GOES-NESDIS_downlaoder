@@ -190,16 +190,32 @@ function populateBandsSelect() {
   // Render bands
   const sorted = Array.from(bandsSet).sort();
   sorted.forEach(b => {
-    const opt = document.createElement("option");
-    opt.value = b;
-    const name = (CONFIG.bandInfo && CONFIG.bandInfo[b] && CONFIG.bandInfo[b].name) ? ` — ${CONFIG.bandInfo[b].name}` : '';
-    opt.textContent = b + name;
-    bandSelect.appendChild(opt);
-  });
+          // If user selected specific bands, only include files matching that band
+          if (selectedBands.size > 0) {
+            const bandMatch = f.key.match(/-M\dC(\d{2})/);
+            const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
+            if (!bandFromFile || !selectedBands.has(bandFromFile)) return;
+          }
 
-  // sync selectedBands when user changes the band select
-  bandSelect.addEventListener("change", () => {
-    selectedBands = new Set(getSelectValues(bandSelect));
+          FILE_RESULTS.push({
+            satellite: p.sat,
+            bucket: p.bucket,
+            product: p.prod,
+            band: p.band || "",
+            key: f.key,
+            size: f.size ? parseInt(f.size, 10) : 0,
+            lastModified: f.lastModified
+          });
+  r.addEventListener("change", () => {
+    const mode = document.querySelector("input[name='time-mode']:checked").value;
+
+    if (mode === "single") {
+      singleBlock.classList.remove("hidden");
+      rangeBlock.classList.add("hidden");
+    } else {
+      singleBlock.classList.add("hidden");
+      rangeBlock.classList.remove("hidden");
+    }
   });
 });
 
