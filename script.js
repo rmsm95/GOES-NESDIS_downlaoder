@@ -13,6 +13,10 @@ const sensorContainer = document.getElementById("sensor-options");
 const productContainer = document.getElementById("product-options");
 const bandContainer = document.getElementById("band-options");
 const bandSelectAll = document.getElementById("bands-select-all");
+const satSelect = document.getElementById("sat-select");
+const sensorSelect = document.getElementById("sensor-select");
+const productSelect = document.getElementById("product-select");
+const bandSelect = document.getElementById("band-select");
 
 const singleBlock = document.getElementById("single-time-block");
 const rangeBlock = document.getElementById("range-time-block");
@@ -93,6 +97,109 @@ function loadSatellites() {
       loadProducts();
       updateQueryButtonState();
     });
+  });
+  // populate the new select control
+  populateSatellitesSelect();
+}
+
+function getSelectValues(sel) {
+  if (!sel) return [];
+  return Array.from(sel.selectedOptions).map(o => o.value);
+}
+
+function populateSatellitesSelect() {
+  if (!satSelect) return;
+  satSelect.innerHTML = "";
+  Object.keys(CONFIG.satellites).forEach(name => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    satSelect.appendChild(opt);
+  });
+  satSelect.addEventListener("change", () => {
+    // update selectedSatellites set
+    selectedSatellites = new Set(getSelectValues(satSelect));
+    populateSensorsSelect();
+    populateProductsSelect();
+    populateBandsSelect();
+    updateQueryButtonState();
+  });
+}
+
+function populateSensorsSelect() {
+  if (!sensorSelect) return;
+  sensorSelect.innerHTML = "";
+
+  const sensors = new Set();
+  [...selectedSatellites].forEach(sat => {
+    const prods = CONFIG.satellites[sat] && CONFIG.satellites[sat].products ? CONFIG.satellites[sat].products : {};
+    Object.keys(prods).forEach(p => sensors.add(p.split("-")[0]));
+  });
+
+  Array.from(sensors).sort().forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    sensorSelect.appendChild(opt);
+  });
+
+  sensorSelect.addEventListener("change", () => {
+    selectedSensors = new Set(getSelectValues(sensorSelect));
+    populateProductsSelect();
+    populateBandsSelect();
+  });
+}
+
+function populateProductsSelect() {
+  if (!productSelect) return;
+  productSelect.innerHTML = "";
+
+  const prodsMap = {};
+  [...selectedSatellites].forEach(sat => {
+    const satProducts = (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
+    Object.keys(satProducts).forEach(prod => {
+      const sensor = prod.split("-")[0];
+      if (selectedSensors.size === 0 || selectedSensors.has(sensor)) {
+        prodsMap[prod] = satProducts[prod];
+      }
+    });
+  });
+
+  Object.keys(prodsMap).sort().forEach(prod => {
+    const opt = document.createElement("option");
+    opt.value = prod;
+    opt.textContent = `${prod} — ${prodsMap[prod].name || ''}`;
+    productSelect.appendChild(opt);
+  });
+
+  productSelect.addEventListener("change", () => {
+    selectedProducts = new Set(getSelectValues(productSelect));
+    populateBandsSelect();
+  });
+}
+
+function populateBandsSelect() {
+  if (!bandSelect) return;
+  bandSelect.innerHTML = "";
+
+  // determine if any selected product is ABI
+  const abiSelected = getSelectValues(productSelect).some(p => p.startsWith("ABI"));
+
+  if (!abiSelected) {
+    // nothing to populate, leave empty
+    return;
+  }
+
+  const bands = CONFIG.ABI_BANDS || [];
+  bands.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b;
+    opt.textContent = b + (CONFIG.bandInfo && CONFIG.bandInfo[b] ? ` — ${CONFIG.bandInfo[b].name}` : "");
+    bandSelect.appendChild(opt);
+  });
+
+  bandSelect.addEventListener("change", () => {
+    selectedBands = new Set(getSelectValues(bandSelect));
   });
 }
 
@@ -176,12 +283,22 @@ bandSelectAll.addEventListener("change", () => {
   selectedBands.clear();
 
   if (bandSelectAll.checked) {
-    allChips.forEach(chip => {
-      chip.classList.add("selected");
-      selectedBands.add(chip.dataset.id);
-    });
+    // select all in new select if present
+    if (bandSelect) {
+      Array.from(bandSelect.options).forEach(o => { o.selected = true; selectedBands.add(o.value); });
+    } else {
+      allChips.forEach(chip => {
+        chip.classList.add("selected");
+        selectedBands.add(chip.dataset.id);
+      });
+    }
   } else {
-    allChips.forEach(chip => chip.classList.remove("selected"));
+    if (bandSelect) {
+      Array.from(bandSelect.options).forEach(o => { o.selected = false; });
+      selectedBands.clear();
+    } else {
+      allChips.forEach(chip => chip.classList.remove("selected"));
+    }
   }
 });
 

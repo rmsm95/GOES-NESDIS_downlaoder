@@ -37,13 +37,13 @@
       <div class="grid-2">
         <div>
           <h3>Satellites</h3>
-          <div id="satellite-options" class="chip-group"></div>
-          <small>You can select more than one satellite.</small>
+          <select id="sat-select" multiple size="6" class="select-multi"></select>
+          <small>You can select one or more satellites.</small>
         </div>
 
         <div>
           <h3>Sensors / Instruments</h3>
-          <div id="sensor-options" class="chip-group"></div>
+          <select id="sensor-select" multiple size="6" class="select-multi"></select>
           <small>Options depend on the satellites selected.</small>
         </div>
       </div>
@@ -51,17 +51,14 @@
       <div class="grid-2">
         <div>
           <h3>Products</h3>
-          <div id="product-options" class="checklist"></div>
-          <small>Choose one or more products.</small>
+          <select id="product-select" multiple size="8" class="select-multi"></select>
+          <small>Choose one or more products (or leave empty to query all).</small>
         </div>
 
         <div>
           <h3>Bands (ABI)</h3>
-          <label class="band-controls">
-            <input type="checkbox" id="bands-select-all">
-            Select all bands (C01–C16)
-          </label>
-          <div id="band-options" class="chip-group compact"></div>
+          <select id="band-select" multiple size="6" class="select-multi"></select>
+          <label class="band-controls"><input type="checkbox" id="bands-select-all"> Select all bands (C01–C16)</label>
         </div>
       </div>
 
