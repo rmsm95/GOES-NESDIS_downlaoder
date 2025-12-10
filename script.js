@@ -116,14 +116,14 @@ function populateSatellitesSelect() {
     opt.textContent = name;
     satSelect.appendChild(opt);
   });
-  satSelect.addEventListener("change", () => {
+  satSelect.onchange = () => {
     // update selectedSatellites set
     selectedSatellites = new Set(getSelectValues(satSelect));
     populateSensorsSelect();
     populateProductsSelect();
     populateBandsSelect();
     updateQueryButtonState();
-  });
+  };
 }
 
 function populateSensorsSelect() {
@@ -131,7 +131,8 @@ function populateSensorsSelect() {
   sensorSelect.innerHTML = "";
 
   const sensors = new Set();
-  [...selectedSatellites].forEach(sat => {
+  const satsToScan = selectedSatellites.size ? [...selectedSatellites] : Object.keys(CONFIG.satellites);
+  satsToScan.forEach(sat => {
     const prods = CONFIG.satellites[sat] && CONFIG.satellites[sat].products ? CONFIG.satellites[sat].products : {};
     Object.keys(prods).forEach(p => sensors.add(p.split("-")[0]));
   });
@@ -143,11 +144,11 @@ function populateSensorsSelect() {
     sensorSelect.appendChild(opt);
   });
 
-  sensorSelect.addEventListener("change", () => {
+  sensorSelect.onchange = () => {
     selectedSensors = new Set(getSelectValues(sensorSelect));
     populateProductsSelect();
     populateBandsSelect();
-  });
+  };
 }
 
 function populateProductsSelect() {
@@ -155,7 +156,8 @@ function populateProductsSelect() {
   productSelect.innerHTML = "";
 
   const prodsMap = {};
-  [...selectedSatellites].forEach(sat => {
+  const satsToScan = selectedSatellites.size ? [...selectedSatellites] : Object.keys(CONFIG.satellites);
+  satsToScan.forEach(sat => {
     const satProducts = (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
     Object.keys(satProducts).forEach(prod => {
       const sensor = prod.split("-")[0];
@@ -172,10 +174,10 @@ function populateProductsSelect() {
     productSelect.appendChild(opt);
   });
 
-  productSelect.addEventListener("change", () => {
+  productSelect.onchange = () => {
     selectedProducts = new Set(getSelectValues(productSelect));
     populateBandsSelect();
-  });
+  };
 }
 
 function populateBandsSelect() {
@@ -570,3 +572,7 @@ copyUrlsBtn.addEventListener("click", async () => {
 setDefaultDateTimeInputs();
 loadSatellites();
 updateQueryButtonState();
+// populate dependent selects on load (show available sensors/products)
+populateSensorsSelect();
+populateProductsSelect();
+populateBandsSelect();
