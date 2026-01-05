@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages (gh-pages branch)
 
 on:
   push:
@@ -6,13 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-      contents: read
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,13 +15,13 @@ jobs:
       - name: Prepare public directory
         run: |
           mkdir -p public
-          # Copy only the static site files needed for the site
           cp -r index.html config.js script.js style.css LICENSE README.md public/ || true
 
-      - name: Upload artifact for GitHub Pages
-        uses: actions/upload-pages-artifact@v1
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: public
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v1
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
+          allow_empty_commit: false
+          commit_message: "ci: deploy site to gh-pages (via workflow)"
