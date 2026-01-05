@@ -439,7 +439,6 @@ function generateHours() {
 
 // ==========================
 // QUERY BUTTON STATE
-                size: f.size ? parseInt(f.size, 10) : 0,
 function updateQueryButtonState() {
   const satsAvailable = satSelect && satSelect.options && satSelect.options.length > 0;
 
@@ -481,7 +480,6 @@ function setDefaultDateTimeInputs() {
   if (endHour) endHour.value = utcHour;
 }
 
-                  size: f.size ? parseInt(f.size, 10) : 0,
 // MAIN QUERY
 // ==========================
 queryBtn.addEventListener("click", async () => {

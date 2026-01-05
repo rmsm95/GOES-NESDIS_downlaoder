@@ -27,17 +27,19 @@ npx http-server -p 8000 -a 0.0.0.0
 
 3. Open frontend in browser: `http://localhost:8000`
 
-Deploying the frontend to GitHub Pages
-1. Push this repo to GitHub (already done): `git push origin main`.
-2. In the repository settings -> Pages, select `main` branch and `/ (root)` folder.
-3. Wait a few minutes; site will be available at:
+Deploying the frontend to GitHub Pages (automatic)
+
+A GitHub Actions workflow is included to automatically deploy the static frontend to GitHub Pages on every push to `main`. The workflow copies the core static files (`index.html`, `config.js`, `script.js`, `style.css`, `LICENSE`, `README.md`) into a `public/` directory and publishes them to Pages.
+
+- The workflow file is `.github/workflows/deploy.yml`.
+- Push to `main` or run the workflow manually from the Actions tab. The site will typically be available at:
 
 ```
 https://<your-github-username>.github.io/GOES-NESDIS_downlaoder/
 ```
 
-Notes about the proxy
-- The frontend uses `window.PROXY_BASE` (if set) or falls back to `http://localhost:3000` when running locally. After deploying the proxy (e.g. to Render, Railway, Heroku), set `window.PROXY_BASE` in `index.html` to the deployed proxy URL.
+Notes about CORS and the proxy
+- The frontend uses `window.PROXY_BASE` (if set) or falls back to `http://localhost:3000` when running locally. If you need reliable S3 listing (avoids CORS issues), deploy the small proxy (`server.js`) to a public host (Render, Railway, Heroku, etc.) and then set `window.PROXY_BASE` in `index.html` (or in your hosting build step) to point at the deployed proxy.
 
 Security
 - The proxy lists public S3 buckets and should be rate-limited/protected if made public. For light testing it's fine; for public use add rate-limiting and authentication.
