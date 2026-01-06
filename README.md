@@ -1,3 +1,41 @@
+# GOES & JPSS AWS Data Downloader
+
+## Purpose
+This web application allows users to browse and download satellite data from NOAA's GOES (16–19) and JPSS (Suomi NPP, NOAA-20, NOAA-21) missions, hosted on AWS Open Data. It provides a user-friendly interface to select satellites, sensors, products, and bands, and to query and download data files for specific dates and times.
+
+## How to Use
+
+1. **Open the Website**
+   - Launch the site in your browser (open `index.html` or run the local server if required).
+
+2. **Select Satellites**
+   - Use the "Satellites" dropdown to select one or more satellites (GOES-16, GOES-17, GOES-18, GOES-19, Suomi NPP, NOAA-20, NOAA-21).
+
+3. **Select Sensors, Products, and Bands**
+   - After selecting satellites, choose sensors, products, and bands as needed. Bands are only applicable for ABI products (GOES satellites).
+
+4. **Set Date and Time**
+   - Choose a single date/hour or a range of dates/hours for your query.
+
+5. **Query Data**
+   - Click the "Query" button to search for available files. Results will be displayed in a table.
+
+6. **Download or Copy URLs**
+   - Select files to download or copy their URLs for further use.
+
+## Requirements
+- Modern web browser
+- (Optional) Local proxy server for AWS S3 access (to avoid CORS issues)
+
+## Notes
+- For non-ABI products (VIIRS, CrIS, ATMS), band selection is ignored.
+- Data is fetched directly from AWS Open Data buckets.
+
+## License
+See LICENSE for details.
+
+---
+
 # GOES-NESDIS_downlaoder
 
 Static frontend to browse and download NOAA GOES / JPSS data hosted on AWS Open Data.

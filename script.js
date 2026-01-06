@@ -394,10 +394,14 @@ function buildPrefixes() {
       const bucket = CONFIG.satellites[sat].bucket;
       const isABI = prod.startsWith("ABI");
 
-      // If ABI and user didn't pick bands, query all ABI bands
-      const bands = isABI ? (selectedBands.size ? [...selectedBands] : [...(CONFIG.ABI_BANDS || [])]) : [null];
-
-      bands.forEach(band => prefixes.push({ sat, bucket, prod, band }));
+      if (isABI) {
+        // If ABI and user didn't pick bands, query all ABI bands
+        const bands = selectedBands.size ? [...selectedBands] : [...(CONFIG.ABI_BANDS || [])];
+        bands.forEach(band => prefixes.push({ sat, bucket, prod, band }));
+      } else {
+        // For non-ABI products, always use band = null
+        prefixes.push({ sat, bucket, prod, band: null });
+      }
     });
   });
 
@@ -515,7 +519,14 @@ queryBtn.addEventListener("click", async () => {
       queryStatus.textContent = `Querying ${date} ${h}:00 UTC…`;
 
       for (let p of prefixes) {
-        const prefix = `${p.prod}/${y}/${doy}/${h}/`;
+        let prefix;
+        if (p.bucket === 'noaa-nesdis-n20-pds' || p.bucket === 'noaa-nesdis-n21-pds') {
+          const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+          const dd = String(dt.getUTCDate()).padStart(2, "0");
+          prefix = `${p.prod}/${y}/${mm}/${dd}/${h}/`;
+        } else {
+          prefix = `${p.prod}/${y}/${doy}/${h}/`;
+        }
 
         const files = await listS3(p.bucket, prefix);
         files.forEach(f => {
@@ -553,7 +564,14 @@ queryBtn.addEventListener("click", async () => {
         const h = hourVal.padStart(2, "0");
 
         for (let p of prefixes) {
-          const prefix = `${p.prod}/${y}/${doy}/${h}/`;
+          let prefix;
+          if (p.bucket === 'noaa-nesdis-n20-pds' || p.bucket === 'noaa-nesdis-n21-pds') {
+            const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+            const dd = String(dt.getUTCDate()).padStart(2, "0");
+            prefix = `${p.prod}/${y}/${mm}/${dd}/${h}/`;
+          } else {
+            prefix = `${p.prod}/${y}/${doy}/${h}/`;
+          }
 
           // Give user progress feedback in the status box.
           queryStatus.textContent = `Querying ${p.sat} ${p.prod} ${date} ${h}...`;
