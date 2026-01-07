@@ -85,5 +85,3 @@ Security
 License
 This repository is licensed under the MIT License — see `LICENSE`.
 
-If you want, I can (A) deploy the proxy to Render and set `window.PROXY_BASE` automatically, (B) prepare a small CI workflow for GitHub Pages, or (C) keep the repo minimal as-is. Tell me which you prefer.
-# GOES-NESDIS_downlaoder
