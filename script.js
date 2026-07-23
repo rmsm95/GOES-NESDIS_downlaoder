@@ -39,6 +39,7 @@ let FILE_RESULTS = []; // store results from AWS queries
 let isQuerying = false;
 const FETCH_TIMEOUT_MS = 10000; // 10s timeout per S3 request
 let failedRequests = 0;
+const queryCache = new Map();
 
 // ==========================
 // UTILITY FUNCTIONS
@@ -225,92 +226,107 @@ document.querySelectorAll("input[name='time-mode']").forEach(r => {
 // AWS S3 LISTING WITH TIMEOUT (Proxy-first, then fallback)
 // ==========================
 async function listS3(bucket, prefix) {
-  // First try local proxy to avoid CORS issues when available.
-  // Use explicit proxy base so browser requests reach the proxy running on port 3000.
-  const PROXY_BASE = (window && window.PROXY_BASE) ? window.PROXY_BASE : 'http://localhost:3000';
-  const proxyUrl = `${PROXY_BASE}/api/list?bucket=${encodeURIComponent(bucket)}&prefix=${encodeURIComponent(prefix)}`;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  // A proxy is useful during local development, but the public static site
+  // should query NOAA directly instead of attempting the visitor's localhost.
+  const isLocalPage = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const proxyBase = window.PROXY_BASE || (isLocalPage ? "http://localhost:3000" : "");
 
-    const resp = await fetch(proxyUrl, { signal: controller.signal });
-    clearTimeout(timeout);
+  if (proxyBase) {
+    const proxyUrl = `${proxyBase}/api/list?bucket=${encodeURIComponent(bucket)}&prefix=${encodeURIComponent(prefix)}`;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-    if (resp.ok) {
-      const json = await resp.json();
-      if (json && json.ok && Array.isArray(json.contents)) {
-        return json.contents.map(item => ({
-          key: item.Key,
-          size: item.Size ? parseInt(item.Size, 10) : 0,
-          lastModified: item.LastModified || ''
-        }));
+      const resp = await fetch(proxyUrl, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (resp.ok) {
+        const json = await resp.json();
+        if (json && json.ok && Array.isArray(json.contents)) {
+          return json.contents.map(item => ({
+            key: item.Key,
+            size: item.Size ? parseInt(item.Size, 10) : 0,
+            lastModified: item.LastModified || ""
+          }));
+        }
+
+        if (json && json.error) {
+          console.warn("listS3: proxy returned error", json.error);
+        }
+      } else {
+        console.warn(`listS3: proxy non-OK response for ${proxyUrl}: ${resp.status}`);
       }
-
-      if (json && json.error) {
-        console.warn('listS3: proxy returned error', json.error);
-        failedRequests++;
+    } catch (err) {
+      if (err.name === "AbortError") {
+        console.warn(`listS3: proxy request timed out for ${proxyUrl}`);
+      } else {
+        console.warn("listS3: proxy request failed", err);
       }
-    } else {
-      console.warn(`listS3: proxy non-OK response for ${proxyUrl}: ${resp.status}`);
-      failedRequests++;
+      // Fall through to the public NOAA bucket.
     }
-  } catch (err) {
-    if (err.name === 'AbortError') {
-      console.warn(`listS3: proxy request timed out for ${proxyUrl}`);
-    } else {
-      console.warn('listS3: proxy request failed', err);
-    }
-    failedRequests++;
-    // fall through to direct S3 attempt
   }
 
-  // Fallback: direct S3 ListBucketV2 call (may be blocked by CORS)
-  const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${encodeURIComponent(prefix)}`;
-  // Use AbortController to implement a timeout
-  const controller2 = new AbortController();
-  const timeout2 = setTimeout(() => controller2.abort(), FETCH_TIMEOUT_MS);
+  // Fallback: direct S3 ListBucketV2 calls (the NOAA buckets allow CORS).
+  const files = [];
+  let continuationToken = "";
 
   try {
-    const resp = await fetch(url, { signal: controller2.signal });
-    clearTimeout(timeout2);
+    do {
+      const params = new URLSearchParams({ "list-type": "2", prefix });
+      if (continuationToken) params.set("continuation-token", continuationToken);
+      const url = `https://${bucket}.s3.amazonaws.com/?${params}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-    if (!resp.ok) {
-      console.warn(`listS3: non-OK response for ${url}: ${resp.status}`);
-      failedRequests++;
-      return [];
-    }
+      try {
+        const resp = await fetch(url, { signal: controller.signal });
+        if (!resp.ok) {
+          console.warn(`listS3: non-OK response for ${url}: ${resp.status}`);
+          failedRequests++;
+          return [];
+        }
 
-    const text = await resp.text();
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, "application/xml");
-    const contents = xml.getElementsByTagName("Contents");
+        const text = await resp.text();
+        const xml = new DOMParser().parseFromString(text, "application/xml");
+        const contents = xml.getElementsByTagName("Contents");
 
-    const files = [];
-    for (let item of contents) {
-      const keyNode = item.getElementsByTagName("Key")[0];
-      const sizeNode = item.getElementsByTagName("Size")[0];
-      const lmNode = item.getElementsByTagName("LastModified")[0];
-      if (!keyNode) continue;
-      files.push({
-        key: keyNode.textContent,
-        size: sizeNode ? parseInt(sizeNode.textContent) : 0,
-        lastModified: lmNode ? lmNode.textContent : ''
-      });
-    }
+        for (const item of contents) {
+          const keyNode = item.getElementsByTagName("Key")[0];
+          const sizeNode = item.getElementsByTagName("Size")[0];
+          const lmNode = item.getElementsByTagName("LastModified")[0];
+          if (!keyNode) continue;
+          files.push({
+            key: keyNode.textContent,
+            size: sizeNode ? parseInt(sizeNode.textContent, 10) : 0,
+            lastModified: lmNode ? lmNode.textContent : ""
+          });
+        }
+
+        continuationToken =
+          xml.getElementsByTagName("NextContinuationToken")[0]?.textContent || "";
+      } finally {
+        clearTimeout(timeout);
+      }
+    } while (continuationToken);
 
     return files;
   } catch (err) {
-    if (err.name === 'AbortError') {
-      console.warn(`listS3: request timed out for ${url}`);
-      failedRequests++;
+    if (err.name === "AbortError") {
+      console.warn(`listS3: direct S3 request timed out for ${bucket}/${prefix}`);
     } else {
-      console.error(`listS3: failed to fetch ${url}. This may be a CORS or network error.`, err);
-      failedRequests++;
+      console.error(`listS3: failed to fetch ${bucket}/${prefix}.`, err);
     }
+    failedRequests++;
     return [];
-  } finally {
-    clearTimeout(timeout2);
   }
+}
+
+function listS3Cached(bucket, prefix) {
+  const cacheKey = `${bucket}::${prefix}`;
+  if (!queryCache.has(cacheKey)) {
+    queryCache.set(cacheKey, listS3(bucket, prefix));
+  }
+  return queryCache.get(cacheKey);
 }
 
 // ==========================
@@ -404,6 +420,59 @@ function buildPrefixes() {
   });
 
   return prefixes;
+}
+
+function buildDataPrefix(query, date) {
+  const satelliteConfig = CONFIG.satellites[query.sat];
+  const year = date.getUTCFullYear();
+
+  if (satelliteConfig.pathStyle === "calendar-date") {
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    return `${query.prod}/${year}/${month}/${day}/`;
+  }
+
+  const startOfYear = new Date(Date.UTC(year, 0, 1));
+  const dayOfYear = String(
+    Math.floor((Date.UTC(year, date.getUTCMonth(), date.getUTCDate()) - startOfYear) / 86400000) + 1
+  ).padStart(3, "0");
+  const hour = String(date.getUTCHours()).padStart(2, "0");
+  return `${query.prod}/${year}/${dayOfYear}/${hour}/`;
+}
+
+function fileMatchesHour(query, key, hour) {
+  const satelliteConfig = CONFIG.satellites[query.sat];
+  if (satelliteConfig.pathStyle !== "calendar-date") return true;
+
+  const timeMatch = key.match(/_t(\d{2})\d+/);
+  return Boolean(timeMatch && timeMatch[1] === hour);
+}
+
+function getBandFromFile(query, key) {
+  const abiMatch = key.match(/-M\dC(\d{2})/);
+  if (abiMatch) return `C${abiMatch[1]}`;
+
+  const viirsMatch = query.prod.match(/^VIIRS-(DNB|[IM]\d+)-SDR$/);
+  return viirsMatch ? viirsMatch[1] : "";
+}
+
+function appendResults(query, files, hour) {
+  files.forEach(file => {
+    if (!fileMatchesHour(query, file.key, hour)) return;
+
+    const band = getBandFromFile(query, file.key);
+    if (selectedBands.size > 0 && (!band || !selectedBands.has(band))) return;
+
+    FILE_RESULTS.push({
+      satellite: query.sat,
+      bucket: query.bucket,
+      product: query.prod,
+      band,
+      key: file.key,
+      size: (file.size / 1_000_000).toFixed(2),
+      lastModified: file.lastModified
+    });
+  });
 }
 
 // ==========================
@@ -500,6 +569,7 @@ queryBtn.addEventListener("click", async () => {
   isQuerying = true;
   queryBtn.disabled = true;
   failedRequests = 0;
+  queryCache.clear();
   queryStatus.textContent = "Querying AWS… please wait.";
   resultsTable.innerHTML = "";
   FILE_RESULTS = [];
@@ -523,35 +593,14 @@ queryBtn.addEventListener("click", async () => {
       // For single mode, query ONLY the exact hour specified (no nearest-hour fallback).
       const [date, hourVal] = hours[0].split(" ");
       const dt = new Date(`${date}T${String(hourVal).padStart(2, "0")}:00Z`);
-      const y = dt.getUTCFullYear();
-      const startOfYear = new Date(Date.UTC(y, 0, 1));
-      const doy = String(Math.floor((Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()) - startOfYear) / 86400000) + 1).padStart(3, "0");
       const h = String(dt.getUTCHours()).padStart(2, "0");
 
       queryStatus.textContent = `Querying ${date} ${h}:00 UTC…`;
 
       for (let p of prefixes) {
-        const prefix = `${p.prod}/${y}/${doy}/${h}/`;
-
-        const files = await listS3(p.bucket, prefix);
-        files.forEach(f => {
-          // If user selected specific bands, only include files matching those bands
-          if (selectedBands.size > 0) {
-            const bandMatch = f.key.match(/-M\dC(\d{2})/);
-            const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
-            if (!bandFromFile || !selectedBands.has(bandFromFile)) return; // skip non-matching band
-          }
-
-          FILE_RESULTS.push({
-            satellite: p.sat,
-            bucket: p.bucket,
-            product: p.prod,
-            band: p.band || "",
-            key: f.key,
-            size: (f.size / 1_000_000).toFixed(2),
-            lastModified: f.lastModified
-          });
-        });
+        const prefix = buildDataPrefix(p, dt);
+        const files = await listS3Cached(p.bucket, prefix);
+        appendResults(p, files, h);
       }
     } else {
       // RANGE MODE
@@ -560,40 +609,17 @@ queryBtn.addEventListener("click", async () => {
         if (isQuerying === false) break; // allow cancellation
         
         const [date, hourVal] = hour.split(" ");
-        const dt = new Date(`${date}T00:00Z`);
-        const y = dt.getUTCFullYear();
-
-        // Build day-of-year as 3-digit DOY (GOES S3 keys use DOY not month/day)
-        const startOfYear = new Date(Date.UTC(y, 0, 1));
-        const doy = String(Math.floor((dt - startOfYear) / 86400000) + 1).padStart(3, "0");
+        const dt = new Date(`${date}T${String(hourVal).padStart(2, "0")}:00Z`);
         const h = hourVal.padStart(2, "0");
 
         for (let p of prefixes) {
-          const prefix = `${p.prod}/${y}/${doy}/${h}/`;
+          const prefix = buildDataPrefix(p, dt);
 
           // Give user progress feedback in the status box.
           queryStatus.textContent = `Querying ${p.sat} ${p.prod} ${date} ${h}...`;
 
-          const files = await listS3(p.bucket, prefix);
-
-          files.forEach(f => {
-            // If user selected specific bands, only include files matching those bands
-            if (selectedBands.size > 0) {
-              const bandMatch = f.key.match(/-M\dC(\d{2})/);
-              const bandFromFile = bandMatch ? `C${bandMatch[1]}` : null;
-              if (!bandFromFile || !selectedBands.has(bandFromFile)) return; // skip non-matching band
-            }
-
-            FILE_RESULTS.push({
-              satellite: p.sat,
-              bucket: p.bucket,
-              product: p.prod,
-              band: p.band || "",
-              key: f.key,
-              size: (f.size / 1_000_000).toFixed(2),
-              lastModified: f.lastModified
-            });
-          });
+          const files = await listS3Cached(p.bucket, prefix);
+          appendResults(p, files, h);
         }
 
         processed++;
@@ -707,8 +733,16 @@ if (quickGoes18Btn) {
     selectedProducts = new Set(["ABI-L1b-RadF"]);
     populateBandsSelect();
     updateQueryButtonState();
-    queryStatus.textContent = "GOES-18 Full Disk selected. Choose a UTC date and hour, then search.";
-    document.getElementById("single-date").focus();
+    queryStatus.textContent = "GOES-18 Full Disk is configured. Choose a UTC date and hour, then select “Search NOAA files”.";
+    quickGoes18Btn.textContent = "GOES-18 configured ✓";
+
+    const timePanel = document.getElementById("time-panel");
+    if (timePanel) timePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("single-date").focus({ preventScroll: true });
+
+    setTimeout(() => {
+      quickGoes18Btn.textContent = "Configure GOES-18 download";
+    }, 2500);
   });
 }
 

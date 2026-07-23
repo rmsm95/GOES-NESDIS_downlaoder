@@ -39,9 +39,14 @@
           <div>
             <span class="step-label">Quick start</span>
             <h2>Looking for GOES-18 imagery?</h2>
-            <p>Apply the common Full Disk configuration, then choose a date and hour.</p>
+            <p>Apply a Full Disk download preset, or learn how to turn the files into mapped imagery and RGB composites.</p>
           </div>
-          <button id="quick-goes18" class="btn-secondary" type="button">Use GOES-18 Full Disk</button>
+          <div class="quick-actions">
+            <button id="quick-goes18" class="btn-secondary quick-action-primary" type="button">Configure GOES-18 download</button>
+            <a class="resource-link" href="https://github.com/blaylockbk/goes2go" target="_blank" rel="noreferrer">
+              Learn domains &amp; RGB with goes2go ↗
+            </a>
+          </div>
         </section>
         
         <!-- SATELLITES / SENSORS / PRODUCTS / BANDS -->
@@ -79,7 +84,7 @@
         </section>
 
         <!-- TIME -->
-        <section class="panel">
+        <section class="panel" id="time-panel">
           <span class="step-label">Step 2</span>
           <h2>Choose the UTC time</h2>
 
@@ -166,6 +171,7 @@
   <!-- FOOTER -->
   <footer class="footer">
     <p>Data provided by NOAA through the Registry of Open Data on AWS.</p>
+    <p><a href="https://commons.wikimedia.org/wiki/File:GOES-18_full_disk_GeoColor_image_from_May_5,_2022.png" target="_blank" rel="noreferrer">Header imagery: NOAA/NASA GOES-18</a></p>
   </footer>
 
   <!-- Scripts -->
