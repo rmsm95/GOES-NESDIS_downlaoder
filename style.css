@@ -135,15 +135,19 @@ a:hover {
   gap: 8px;
 }
 
-.quick-action-primary {
+.quick-start .quick-action-primary {
+  display: block;
   background: #087f8c;
   border-color: #076b76;
   color: white;
+  text-align: center;
+  text-decoration: none;
 }
 
-.quick-action-primary:hover {
+.quick-start .quick-action-primary:hover {
   background: #066b76;
   border-color: #055a63;
+  color: white;
 }
 
 .resource-link {
