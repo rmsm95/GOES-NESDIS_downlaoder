@@ -24,6 +24,8 @@ const selectAllFiles = document.getElementById("select-all-files");
 
 const downloadSelectedBtn = document.getElementById("download-selected");
 const copyUrlsBtn = document.getElementById("copy-urls");
+const quickGoes18Btn = document.getElementById("quick-goes18");
+const resultFilter = document.getElementById("result-filter");
 
 // ==========================
 // STATE
@@ -72,8 +74,10 @@ function populateSatellitesSelect() {
     populateBandsSelect();
     updateQueryButtonState();
   };
-  // Auto-select all satellites on page load
-  Array.from(satSelect.options).forEach(opt => opt.selected = true);
+  // Start with the most relevant active GOES-West satellite.
+  Array.from(satSelect.options).forEach(opt => {
+    opt.selected = opt.value === "GOES-18";
+  });
   selectedSatellites = new Set(getSelectValues(satSelect));
 }
 
@@ -102,6 +106,7 @@ function populateSensorsSelect() {
     selectedSensors = new Set(getSelectValues(sensorSelect));
     populateProductsSelect();
     populateBandsSelect();
+    updateQueryButtonState();
   };
 }
 
@@ -131,15 +136,13 @@ function populateProductsSelect() {
   productSelect.onchange = () => {
     selectedProducts = new Set(getSelectValues(productSelect));
     populateBandsSelect();
+    updateQueryButtonState();
   };
 }
 
 function populateBandsSelect() {
   if (!bandSelect) return;
   bandSelect.innerHTML = "";
-  console.log('populateBandsSelect: selectedSatellites=', [...selectedSatellites]);
-  console.log('populateBandsSelect: selectedSensors=', [...selectedSensors]);
-  console.log('populateBandsSelect: selectedProducts=', [...selectedProducts]);
   // Build a list of candidate products to inspect for bands.
   // If the user selected explicit products, use those; otherwise derive
   // products from selected satellites/sensors (like populateProductsSelect).
@@ -178,9 +181,6 @@ function populateBandsSelect() {
     }
   });
 
-  console.log('populateBandsSelect: prodCandidates count=', prodCandidates.length);
-  console.log('populateBandsSelect: bandsSet=', Array.from(bandsSet).sort());
-
   if (bandsSet.size === 0) {
     // nothing to show
     selectedBands = new Set();
@@ -198,9 +198,10 @@ function populateBandsSelect() {
   });
 
   // sync selectedBands when user changes the band select
-  bandSelect.addEventListener("change", () => {
+  bandSelect.onchange = () => {
     selectedBands = new Set(getSelectValues(bandSelect));
-  });
+    updateQueryButtonState();
+  };
 }
 
 // ==========================
@@ -264,7 +265,7 @@ async function listS3(bucket, prefix) {
   }
 
   // Fallback: direct S3 ListBucketV2 call (may be blocked by CORS)
-  const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${prefix}`;
+  const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${encodeURIComponent(prefix)}`;
   // Use AbortController to implement a timeout
   const controller2 = new AbortController();
   const timeout2 = setTimeout(() => controller2.abort(), FETCH_TIMEOUT_MS);
@@ -376,7 +377,7 @@ function buildPrefixes() {
 
   [...selectedSatellites].forEach(sat => {
     const satProducts = CONFIG.satellites[sat].products || {};
-    let prodList = [...selectedProducts];
+    let prodList = [...selectedProducts].filter(prod => Object.hasOwn(satProducts, prod));
 
     if (prodList.length === 0) {
       // include all products that match selected sensors (if any)
@@ -394,10 +395,11 @@ function buildPrefixes() {
       const bucket = CONFIG.satellites[sat].bucket;
       const isABI = prod.startsWith("ABI");
 
-      // If ABI and user didn't pick bands, query all ABI bands
-      const bands = isABI ? (selectedBands.size ? [...selectedBands] : [...(CONFIG.ABI_BANDS || [])]) : [null];
-
-      bands.forEach(band => prefixes.push({ sat, bucket, prod, band }));
+      // Bands are encoded in ABI filenames, not in the S3 directory prefix.
+      // Query each product/hour once and filter the returned filenames later.
+      if (selectedBands.size === 0 || isABI) {
+        prefixes.push({ sat, bucket, prod });
+      }
     });
   });
 
@@ -412,23 +414,34 @@ function generateHours() {
 
   if (mode === "single") {
     const d = document.getElementById("single-date").value;
-    const h = document.getElementById("single-hour").value;
+    const h = Number(document.getElementById("single-hour").value);
 
+    if (!d || !Number.isInteger(h) || h < 0 || h > 23) {
+      throw new Error("Select a valid UTC date and hour (0–23).");
+    }
     return [`${d} ${h}`];
   }
 
   // RANGE MODE
   const startD = document.getElementById("range-start-date").value;
-  const startH = parseInt(document.getElementById("range-start-hour").value);
+  const startH = Number(document.getElementById("range-start-hour").value);
   const endD = document.getElementById("range-end-date").value;
-  const endH = parseInt(document.getElementById("range-end-hour").value);
+  const endH = Number(document.getElementById("range-end-hour").value);
+
+  if (!startD || !endD || !Number.isInteger(startH) || !Number.isInteger(endH)
+      || startH < 0 || startH > 23 || endH < 0 || endH > 23) {
+    throw new Error("Select a valid UTC date range and hours (0–23).");
+  }
 
   const start = new Date(`${startD}T${String(startH).padStart(2, "0")}:00Z`);
   const end = new Date(`${endD}T${String(endH).padStart(2, "0")}:00Z`);
+  if (start > end) {
+    throw new Error("The start of the interval must be before its end.");
+  }
 
   const arr = [];
 
-  for (let t = start; t <= end; t.setHours(t.getHours() + 1)) {
+  for (let t = new Date(start); t <= end; t.setUTCHours(t.getUTCHours() + 1)) {
     arr.push(
       `${t.toISOString().substring(0, 10)} ${t.getUTCHours()}`
     );
@@ -439,7 +452,7 @@ function generateHours() {
 
 // ==========================
 // QUERY BUTTON STATE
-function updateQueryButtonState() {
+function updateQueryButtonState(preserveStatus = false) {
   const satsAvailable = satSelect && satSelect.options && satSelect.options.length > 0;
 
   if (!satsAvailable) {
@@ -451,7 +464,7 @@ function updateQueryButtonState() {
   queryBtn.disabled = false;
   if (selectedSatellites.size === 0) {
     queryStatus.textContent = "No satellites selected — query will search all satellites.";
-  } else {
+  } else if (!preserveStatus) {
     queryStatus.textContent = "";
   }
 }
@@ -497,12 +510,15 @@ queryBtn.addEventListener("click", async () => {
   if (productSelect) selectedProducts = new Set(getSelectValues(productSelect));
   if (bandSelect) selectedBands = new Set(getSelectValues(bandSelect));
 
-  const prefixes = buildPrefixes();
-  const hours = generateHours();
-
   const mode = document.querySelector("input[name='time-mode']:checked").value;
 
   try {
+    const prefixes = buildPrefixes();
+    const hours = generateHours();
+    if (prefixes.length === 0) {
+      throw new Error("No compatible satellite/product combination was selected.");
+    }
+
     if (mode === "single") {
       // For single mode, query ONLY the exact hour specified (no nearest-hour fallback).
       const [date, hourVal] = hours[0].split(" ");
@@ -598,7 +614,7 @@ queryBtn.addEventListener("click", async () => {
       // reset counter for next query
       failedRequests = 0;
     }
-    updateQueryButtonState();
+    updateQueryButtonState(true);
   }
 });
 
@@ -609,9 +625,31 @@ function renderResults() {
   resultsTable.innerHTML = "";
   selectAllFiles.checked = false;
 
-  resultsInfo.textContent = `${FILE_RESULTS.length} files found.`;
+  const filterText = resultFilter ? resultFilter.value.trim().toLowerCase() : "";
+  const visibleResults = FILE_RESULTS
+    .map((file, index) => ({ file, index }))
+    .filter(({ file }) => {
+      if (!filterText) return true;
+      return [file.satellite, file.product, file.band, file.key]
+        .some(value => String(value || "").toLowerCase().includes(filterText));
+    });
 
-  FILE_RESULTS.forEach((f, i) => {
+  resultsInfo.textContent = filterText
+    ? `${visibleResults.length} of ${FILE_RESULTS.length} files shown`
+    : `${FILE_RESULTS.length} files found`;
+
+  if (visibleResults.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="9" class="empty-state">${
+      FILE_RESULTS.length === 0
+        ? "No files found for this selection. Try another hour or fewer filters."
+        : "No files match this filter."
+    }</td>`;
+    resultsTable.appendChild(tr);
+    return;
+  }
+
+  visibleResults.forEach(({ file: f, index: i }) => {
     const tr = document.createElement("tr");
 
     const fileUrl = `https://${f.bucket}.s3.amazonaws.com/${encodeURI(f.key)}`;
@@ -644,6 +682,35 @@ selectAllFiles.addEventListener("change", () => {
     chk.checked = selectAllFiles.checked;
   });
 });
+
+if (resultFilter) {
+  resultFilter.addEventListener("input", renderResults);
+}
+
+if (quickGoes18Btn) {
+  quickGoes18Btn.addEventListener("click", () => {
+    Array.from(satSelect.options).forEach(opt => {
+      opt.selected = opt.value === "GOES-18";
+    });
+    selectedSatellites = new Set(["GOES-18"]);
+    populateSensorsSelect();
+
+    Array.from(sensorSelect.options).forEach(opt => {
+      opt.selected = opt.value === "ABI";
+    });
+    selectedSensors = new Set(["ABI"]);
+    populateProductsSelect();
+
+    Array.from(productSelect.options).forEach(opt => {
+      opt.selected = opt.value === "ABI-L1b-RadF";
+    });
+    selectedProducts = new Set(["ABI-L1b-RadF"]);
+    populateBandsSelect();
+    updateQueryButtonState();
+    queryStatus.textContent = "GOES-18 Full Disk selected. Choose a UTC date and hour, then search.";
+    document.getElementById("single-date").focus();
+  });
+}
 
 // ==========================
 // DOWNLOAD SELECTED
