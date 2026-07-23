@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>GOES & JPSS AWS Data Downloader</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css?v=20260723-2">
+  <link rel="stylesheet" href="style.css?v=20260723-3">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -38,13 +38,15 @@
         <section class="panel quick-start">
           <div>
             <span class="step-label">Quick start</span>
-            <h2>Looking for GOES-18 imagery?</h2>
-            <p>Apply a Full Disk download preset, or learn how to turn the files into mapped imagery and RGB composites.</p>
+            <h2>Preview GOES before downloading</h2>
+            <p>Explore the satellite, domain, time and visualization in Google Earth Engine, then download only the files you need.</p>
           </div>
           <div class="quick-actions">
-            <button id="quick-goes18" class="btn-secondary quick-action-primary" type="button">Configure GOES-18 download</button>
-            <a class="resource-link" href="https://github.com/blaylockbk/goes2go" target="_blank" rel="noreferrer">
-              Learn domains &amp; RGB with goes2go ↗
+            <a class="btn-secondary quick-action-primary" href="https://ruimota16.users.earthengine.app/view/testapp" target="_blank" rel="noreferrer">
+              Open GOES viewer ↗
+            </a>
+            <a class="resource-link" href="https://github.com/rmsm95/GOES-VIIRS-Imagery-Guide" target="_blank" rel="noreferrer">
+              Learn GOES, VIIRS &amp; RGB ↗
             </a>
           </div>
         </section>
@@ -84,7 +86,7 @@
         </section>
 
         <!-- TIME -->
-        <section class="panel" id="time-panel">
+        <section class="panel">
           <span class="step-label">Step 2</span>
           <h2>Choose the UTC time</h2>
 
@@ -180,8 +182,8 @@
   <script>
     // window.PROXY_BASE = 'https://your-proxy.example.com';
   </script>
-  <script src="config.js?v=20260723-2"></script>
-  <script src="script.js?v=20260723-2"></script>
+  <script src="config.js?v=20260723-3"></script>
+  <script src="script.js?v=20260723-3"></script>
 
 </body>
 </html>

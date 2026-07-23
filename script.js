@@ -24,7 +24,6 @@ const selectAllFiles = document.getElementById("select-all-files");
 
 const downloadSelectedBtn = document.getElementById("download-selected");
 const copyUrlsBtn = document.getElementById("copy-urls");
-const quickGoes18Btn = document.getElementById("quick-goes18");
 const resultFilter = document.getElementById("result-filter");
 
 // ==========================
@@ -711,39 +710,6 @@ selectAllFiles.addEventListener("change", () => {
 
 if (resultFilter) {
   resultFilter.addEventListener("input", renderResults);
-}
-
-if (quickGoes18Btn) {
-  quickGoes18Btn.addEventListener("click", () => {
-    Array.from(satSelect.options).forEach(opt => {
-      opt.selected = opt.value === "GOES-18";
-    });
-    selectedSatellites = new Set(["GOES-18"]);
-    populateSensorsSelect();
-
-    Array.from(sensorSelect.options).forEach(opt => {
-      opt.selected = opt.value === "ABI";
-    });
-    selectedSensors = new Set(["ABI"]);
-    populateProductsSelect();
-
-    Array.from(productSelect.options).forEach(opt => {
-      opt.selected = opt.value === "ABI-L1b-RadF";
-    });
-    selectedProducts = new Set(["ABI-L1b-RadF"]);
-    populateBandsSelect();
-    updateQueryButtonState();
-    queryStatus.textContent = "GOES-18 Full Disk is configured. Choose a UTC date and hour, then select “Search NOAA files”.";
-    quickGoes18Btn.textContent = "GOES-18 configured ✓";
-
-    const timePanel = document.getElementById("time-panel");
-    if (timePanel) timePanel.scrollIntoView({ behavior: "smooth", block: "start" });
-    document.getElementById("single-date").focus({ preventScroll: true });
-
-    setTimeout(() => {
-      quickGoes18Btn.textContent = "Configure GOES-18 download";
-    }, 2500);
-  });
 }
 
 // ==========================
