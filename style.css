@@ -27,8 +27,8 @@ a:hover {
 /* =================== HEADER =================== */
 .header {
   background:
-    radial-gradient(circle at 85% 10%, rgba(46, 196, 182, 0.28), transparent 28%),
-    linear-gradient(135deg, #052f4a 0%, #075985 55%, #0c7c86 100%);
+    linear-gradient(90deg, rgba(3, 29, 48, .94) 0%, rgba(4, 54, 79, .82) 52%, rgba(3, 37, 58, .56) 100%),
+    url("assets/goes18-header.jpg") center 42% / cover no-repeat;
   color: white;
   padding: 40px 20px;
   margin: -20px -20px 30px -20px;
@@ -125,6 +125,34 @@ a:hover {
 
 .quick-start .btn-secondary {
   flex: 0 0 auto;
+}
+
+.quick-actions {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 220px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quick-action-primary {
+  background: #087f8c;
+  border-color: #076b76;
+  color: white;
+}
+
+.quick-action-primary:hover {
+  background: #066b76;
+  border-color: #055a63;
+}
+
+.resource-link {
+  padding: 4px 6px;
+  color: #075985;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .panel h2 {
@@ -480,6 +508,10 @@ a:hover {
   }
 
   .result-filter {
+    flex-basis: auto;
+  }
+
+  .quick-actions {
     flex-basis: auto;
   }
 }

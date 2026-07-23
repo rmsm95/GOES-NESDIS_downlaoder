@@ -12,9 +12,9 @@ const ALLOWED_BUCKETS = new Set([
   'noaa-goes17',
   'noaa-goes18',
   'noaa-goes19',
-  'noaa-snpp',
-  'noaa-j1',
-  'noaa-j2'
+  'noaa-nesdis-snpp-pds',
+  'noaa-nesdis-n20-pds',
+  'noaa-nesdis-n21-pds'
 ]);
 
 app.get('/api/ping', (req, res) => res.json({ ok: true, msg: 'proxy alive' }));
@@ -27,26 +27,34 @@ app.get('/api/list', async (req, res) => {
   }
 
   try {
-    const params = new URLSearchParams({ 'list-type': '2', prefix });
-    const url = `https://${bucket}.s3.amazonaws.com/?${params}`;
-    const resp = await axios.get(url, {
-      timeout: 15000,
-      responseType: 'text',
-      maxContentLength: 10 * 1024 * 1024
-    });
-    const xml = resp.data;
-
-    const parsed = await xml2js.parseStringPromise(xml, { explicitArray: false });
-    const contents = parsed.ListBucketResult && parsed.ListBucketResult.Contents ? parsed.ListBucketResult.Contents : [];
-
     const out = [];
-    if (Array.isArray(contents)) {
-      contents.forEach(item => {
-        out.push({ Key: item.Key, Size: parseInt(item.Size, 10) || 0, LastModified: item.LastModified });
+    let continuationToken = '';
+
+    do {
+      const params = new URLSearchParams({ 'list-type': '2', prefix });
+      if (continuationToken) params.set('continuation-token', continuationToken);
+
+      const url = `https://${bucket}.s3.amazonaws.com/?${params}`;
+      const resp = await axios.get(url, {
+        timeout: 15000,
+        responseType: 'text',
+        maxContentLength: 10 * 1024 * 1024
       });
-    } else if (typeof contents === 'object' && contents.Key) {
-      out.push({ Key: contents.Key, Size: parseInt(contents.Size, 10) || 0, LastModified: contents.LastModified });
-    }
+      const parsed = await xml2js.parseStringPromise(resp.data, { explicitArray: false });
+      const result = parsed.ListBucketResult || {};
+      const contents = result.Contents || [];
+
+      const items = Array.isArray(contents) ? contents : [contents];
+      items.filter(item => item && item.Key).forEach(item => {
+        out.push({
+          Key: item.Key,
+          Size: parseInt(item.Size, 10) || 0,
+          LastModified: item.LastModified
+        });
+      });
+
+      continuationToken = result.NextContinuationToken || '';
+    } while (continuationToken);
 
     return res.json({ ok: true, contents: out });
   } catch (err) {

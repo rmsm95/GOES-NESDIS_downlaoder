@@ -5,6 +5,29 @@
 
 const ABI_BANDS = ['C01','C02','C03','C04','C05','C06','C07','C08','C09','C10','C11','C12','C13','C14','C15','C16'];
 
+const JPSS_PRODUCTS = {
+  'ATMS-SDR': { name: 'ATMS Sensor Data Record', bands: null },
+  'ATMS-SDR-GEO': { name: 'ATMS Geolocation', bands: null },
+  'CrIS-FS-SDR': { name: 'CrIS Full-Spectral Sensor Data Record', bands: null },
+  'OMPS-NP-SDR': { name: 'OMPS Nadir Profiler Sensor Data Record', bands: null },
+  'OMPS-TC-SDR': { name: 'OMPS Total Column Sensor Data Record', bands: null },
+  'VIIRS-DNB-SDR': { name: 'VIIRS Day/Night Band Sensor Data Record', bands: null }
+};
+
+['I1','I2','I3','I4','I5'].forEach(band => {
+  JPSS_PRODUCTS[`VIIRS-${band}-SDR`] = {
+    name: `VIIRS Imagery Band ${band} Sensor Data Record`,
+    bands: null
+  };
+});
+
+['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12','M13','M14','M15','M16'].forEach(band => {
+  JPSS_PRODUCTS[`VIIRS-${band}-SDR`] = {
+    name: `VIIRS Moderate Band ${band} Sensor Data Record`,
+    bands: null
+  };
+});
+
 const CONFIG = {
   satellites: {
     'GOES-16': {
@@ -132,29 +155,19 @@ const CONFIG = {
       }
     },
     'Suomi NPP': {
-      bucket: 'noaa-snpp',
-      products: {
-        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] },
-        'CrIS-L1b-QL': { name: 'CrIS L1b Quality', bands: null },
-        'OMPS-L2-SO2': { name: 'OMPS L2 SO2', bands: null },
-        'ATMS-L1b': { name: 'ATMS L1b', bands: null }
-      }
+      bucket: 'noaa-nesdis-snpp-pds',
+      pathStyle: 'calendar-date',
+      products: JPSS_PRODUCTS
     },
     'NOAA-20': {
-      bucket: 'noaa-j1',
-      products: {
-        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] },
-        'CrIS-L1b-QL': { name: 'CrIS L1b Quality', bands: null },
-        'ATMS-L1b': { name: 'ATMS L1b', bands: null }
-      }
+      bucket: 'noaa-nesdis-n20-pds',
+      pathStyle: 'calendar-date',
+      products: JPSS_PRODUCTS
     },
     'NOAA-21': {
-      bucket: 'noaa-j2',
-      products: {
-        'VIIRS-L1': { name: 'VIIRS L1', bands: ['I1', 'I2', 'I3', 'I4', 'I5', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12', 'M13', 'M14', 'M15', 'M16'] },
-        'CrIS-L1b-QL': { name: 'CrIS L1b Quality', bands: null },
-        'ATMS-L1b': { name: 'ATMS L1b', bands: null }
-      }
+      bucket: 'noaa-nesdis-n21-pds',
+      pathStyle: 'calendar-date',
+      products: JPSS_PRODUCTS
     }
   },
 
