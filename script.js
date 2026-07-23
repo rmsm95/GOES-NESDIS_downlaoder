@@ -9,6 +9,7 @@
 // ==========================
 const satSelect = document.getElementById("sat-select");
 const sensorSelect = document.getElementById("sensor-select");
+const domainSelect = document.getElementById("domain-select");
 const productSelect = document.getElementById("product-select");
 const bandSelect = document.getElementById("band-select");
 
@@ -54,6 +55,18 @@ function clearContainer(el) {
   el.innerHTML = "";
 }
 
+function productMatchesSelectedDomain(product) {
+  const domain = domainSelect ? domainSelect.value : "";
+  return !domain || !product.startsWith("ABI-") || product.endsWith(domain);
+}
+
+function updateDomainControl() {
+  if (!domainSelect) return;
+  const hasGoes = [...selectedSatellites].some(sat => sat.startsWith("GOES-"));
+  domainSelect.disabled = !hasGoes;
+  if (!hasGoes) domainSelect.value = "";
+}
+
 // ==========================
 // POPULATE SELECT ELEMENTS
 // ==========================
@@ -69,6 +82,7 @@ function populateSatellitesSelect() {
   });
   satSelect.onchange = () => {
     selectedSatellites = new Set(getSelectValues(satSelect));
+    updateDomainControl();
     populateSensorsSelect();
     populateProductsSelect();
     populateBandsSelect();
@@ -120,7 +134,10 @@ function populateProductsSelect() {
     const satProducts = (CONFIG.satellites[sat] && CONFIG.satellites[sat].products) || {};
     Object.keys(satProducts).forEach(prod => {
       const sensor = prod.split("-")[0];
-      if (selectedSensors.size === 0 || selectedSensors.has(sensor)) {
+      if (
+        (selectedSensors.size === 0 || selectedSensors.has(sensor)) &&
+        productMatchesSelectedDomain(prod)
+      ) {
         prodsMap[prod] = satProducts[prod];
       }
     });
@@ -398,6 +415,7 @@ function buildPrefixes() {
       // include all products that match selected sensors (if any)
       prodList = Object.keys(satProducts).filter(prodKey => {
         const sensor = prodKey.split("-")[0];
+        if (!productMatchesSelectedDomain(prodKey)) return false;
         // If user selected specific bands, ONLY include ABI products (bands only apply to ABI)
         if (selectedBands.size > 0) {
           return prodKey.startsWith("ABI");
@@ -761,6 +779,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setDefaultDateTimeInputs();
     populateSatellitesSelect();
+    updateDomainControl();
+
+    if (domainSelect) {
+      domainSelect.addEventListener("change", () => {
+        selectedProducts = new Set();
+        populateProductsSelect();
+        populateBandsSelect();
+        updateQueryButtonState();
+      });
+    }
 
     // Sync selected sets from selects
     if (satSelect) selectedSatellites = new Set(getSelectValues(satSelect));

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>GOES & JPSS AWS Data Downloader</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="style.css?v=20260723-3">
+  <link rel="stylesheet" href="style.css?v=20260723-5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -39,7 +39,8 @@
           <div>
             <span class="step-label">Quick start</span>
             <h2>Preview GOES before downloading</h2>
-            <p>Explore the satellite, domain, time and visualization in Google Earth Engine, then download only the files you need.</p>
+            <span class="preview-status">In testing · under construction</span>
+            <p>Explore the satellite, domain, time and visualization in Google Earth Engine, then download only the files you need. The preview tool is still being tested and developed.</p>
           </div>
           <div class="quick-actions">
             <a class="btn-secondary quick-action-primary" href="https://ruimota16.users.earthengine.app/view/testapp" target="_blank" rel="noreferrer">
@@ -68,6 +69,17 @@
               <select id="sensor-select" multiple size="5" class="select-multi" aria-label="Sensors and instruments"></select>
               <small>Options depend on the satellites selected.</small>
             </div>
+          </div>
+
+          <div class="control-group">
+            <h3>GOES source coverage</h3>
+            <select id="domain-select" class="select-multi" aria-label="GOES source coverage">
+              <option value="">All GOES source coverages</option>
+              <option value="F">Full Disk</option>
+              <option value="C">CONUS</option>
+              <option value="M">Mesoscale</option>
+            </select>
+            <small>Filters ABI source products. Define the geographic output yourself as longitude/latitude limits in the GOES/VIIRS imagery guide.</small>
           </div>
 
           <div class="grid-2">
@@ -182,8 +194,8 @@
   <script>
     // window.PROXY_BASE = 'https://your-proxy.example.com';
   </script>
-  <script src="config.js?v=20260723-3"></script>
-  <script src="script.js?v=20260723-3"></script>
+  <script src="config.js?v=20260723-5"></script>
+  <script src="script.js?v=20260723-5"></script>
 
 </body>
 </html>
