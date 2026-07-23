@@ -7,16 +7,33 @@ const app = express();
 app.use(cors());
 
 const PORT = process.env.PORT || 3000;
+const ALLOWED_BUCKETS = new Set([
+  'noaa-goes16',
+  'noaa-goes17',
+  'noaa-goes18',
+  'noaa-goes19',
+  'noaa-snpp',
+  'noaa-j1',
+  'noaa-j2'
+]);
 
 app.get('/api/ping', (req, res) => res.json({ ok: true, msg: 'proxy alive' }));
 
 app.get('/api/list', async (req, res) => {
   const { bucket, prefix } = req.query;
   if (!bucket || !prefix) return res.status(400).json({ ok: false, error: 'bucket and prefix query params required' });
+  if (!ALLOWED_BUCKETS.has(bucket)) {
+    return res.status(400).json({ ok: false, error: 'unsupported NOAA bucket' });
+  }
 
   try {
-    const url = `https://${bucket}.s3.amazonaws.com/?list-type=2&prefix=${encodeURIComponent(prefix)}`;
-    const resp = await axios.get(url, { timeout: 15000, responseType: 'text' });
+    const params = new URLSearchParams({ 'list-type': '2', prefix });
+    const url = `https://${bucket}.s3.amazonaws.com/?${params}`;
+    const resp = await axios.get(url, {
+      timeout: 15000,
+      responseType: 'text',
+      maxContentLength: 10 * 1024 * 1024
+    });
     const xml = resp.data;
 
     const parsed = await xml2js.parseStringPromise(xml, { explicitArray: false });

@@ -15,11 +15,17 @@
   <!-- HEADER -->
   <header class="header">
     <div class="header-content">
-      <h1>GOES & JPSS AWS Data Downloader</h1>
+      <div class="eyebrow">NOAA Open Data</div>
+      <h1>GOES & JPSS Data Explorer</h1>
       <p class="subtitle">
-        Browse and download NOAA GOES (16–19) and JPSS (NOAA-20, NOAA-21)
-        satellite data hosted on AWS Open Data.
+        Find and download GOES (16–19) and JPSS satellite files from AWS,
+        without needing to know the NOAA folder structure.
       </p>
+      <div class="header-meta">
+        <span>UTC time</span>
+        <span>Direct NOAA links</span>
+        <span>No account required</span>
+      </div>
     </div>
   </header>
 
@@ -29,21 +35,30 @@
       
       <!-- CONTROLS PANEL -->
       <div class="controls-panel">
+        <section class="panel quick-start">
+          <div>
+            <span class="step-label">Quick start</span>
+            <h2>Looking for GOES-18 imagery?</h2>
+            <p>Apply the common Full Disk configuration, then choose a date and hour.</p>
+          </div>
+          <button id="quick-goes18" class="btn-secondary" type="button">Use GOES-18 Full Disk</button>
+        </section>
         
         <!-- SATELLITES / SENSORS / PRODUCTS / BANDS -->
         <section class="panel">
-          <h2>1. Select satellites, sensors, products & bands</h2>
+          <span class="step-label">Step 1</span>
+          <h2>Choose the data</h2>
 
           <div class="grid-2">
             <div class="control-group">
               <h3>Satellites</h3>
-              <select id="sat-select" multiple size="6" class="select-multi"></select>
-              <small>You can select one or more satellites.</small>
+              <select id="sat-select" multiple size="5" class="select-multi" aria-label="Satellites"></select>
+              <small>GOES-18 is selected initially. Hold Ctrl/Cmd to select more.</small>
             </div>
 
             <div class="control-group">
               <h3>Sensors / Instruments</h3>
-              <select id="sensor-select" multiple size="6" class="select-multi"></select>
+              <select id="sensor-select" multiple size="5" class="select-multi" aria-label="Sensors and instruments"></select>
               <small>Options depend on the satellites selected.</small>
             </div>
           </div>
@@ -51,13 +66,13 @@
           <div class="grid-2">
             <div class="control-group">
               <h3>Products</h3>
-              <select id="product-select" multiple size="8" class="select-multi"></select>
+              <select id="product-select" multiple size="7" class="select-multi" aria-label="Products"></select>
               <small>Choose one or more products (or leave empty to query all).</small>
             </div>
 
             <div class="control-group">
               <h3>Bands (ABI)</h3>
-              <select id="band-select" multiple size="6" class="select-multi"></select>
+              <select id="band-select" multiple size="7" class="select-multi" aria-label="ABI bands"></select>
               <label class="band-controls"><input type="checkbox" id="bands-select-all"> Select all bands (C01–C16)</label>
             </div>
           </div>
@@ -65,7 +80,8 @@
 
         <!-- TIME -->
         <section class="panel">
-          <h2>2. Select time range</h2>
+          <span class="step-label">Step 2</span>
+          <h2>Choose the UTC time</h2>
 
           <div class="radio-group control-group">
             <label><input type="radio" name="time-mode" value="single" checked> Single date & hour</label>
@@ -94,16 +110,17 @@
             </div>
           </div>
 
-          <button id="query-button" class="btn-primary">3. Query S3</button>
-          <div id="query-status" class="status-box"></div>
-          <div class="info-box" style="margin-top:8px;"><small>Tip: Times are UTC. If you want all products, don't select any product.</small></div>
+          <button id="query-button" class="btn-primary">Search NOAA files</button>
+          <div id="query-status" class="status-box" role="status" aria-live="polite"></div>
+          <p class="help-text">Times use UTC. Leave products empty to search all compatible products.</p>
         </section>
       </div>
 
       <!-- RESULTS PANEL -->
       <div class="results-panel">
         <section class="panel">
-          <h2>4. Results & downloads</h2>
+          <span class="step-label">Step 3</span>
+          <h2>Review and download</h2>
 
           <div class="results-actions button-group">
             <label style="display:flex;align-items:center;gap:8px;">
@@ -115,9 +132,15 @@
             <button id="copy-urls" class="btn-secondary">Copy URLs</button>
           </div>
 
-          <div id="results-info" class="status-box"></div>
+          <div class="results-toolbar">
+            <div id="results-info" class="results-count">No search run yet.</div>
+            <label class="result-filter">
+              <span class="sr-only">Filter results</span>
+              <input id="result-filter" type="search" placeholder="Filter by filename, product or band…" autocomplete="off">
+            </label>
+          </div>
 
-          <div class="table-container info-box" style="margin-top:8px;">
+          <div class="table-container info-box">
             <table id="results-table">
               <thead>
                 <tr>
@@ -142,7 +165,7 @@
 
   <!-- FOOTER -->
   <footer class="footer">
-    <p>GOES & JPSS AWS Data Downloader</p>
+    <p>Data provided by NOAA through the Registry of Open Data on AWS.</p>
   </footer>
 
   <!-- Scripts -->
